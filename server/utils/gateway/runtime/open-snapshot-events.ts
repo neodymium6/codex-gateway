@@ -6,8 +6,9 @@ import {
   appServerThreadStatusFromUnknown,
   threadSettingsFromAppServer,
 } from "~~/shared/runtime/app-server";
-import { idFromUnknown } from "~~/shared/utils/records";
+import { idFromUnknown, recordFromUnknown } from "~~/shared/utils/records";
 import type { AgentEvent } from "~~/shared/agent/events";
+import type { GatewayEvent } from "~~/shared/types";
 import { applyCanonicalEventToHistory } from "~~/shared/thread-history/canonical-events";
 import type { ThreadOpenSnapshot } from "./types";
 
@@ -32,6 +33,38 @@ export function applyEventToOpenSnapshot(snapshot: ThreadOpenSnapshot | null, ev
   let nextSnapshot = withSnapshotHistory(snapshot, history);
   nextSnapshot = applySnapshotReducer(nextSnapshot, event) ?? nextSnapshot;
   return nextSnapshot;
+}
+
+export function preserveUserMessagesInOpenSnapshot(
+  snapshot: ThreadOpenSnapshot,
+  previousSnapshot: ThreadOpenSnapshot | null,
+  events: readonly GatewayEvent[],
+) {
+  // App Server itemsView=summary intentionally keeps only the first user message and final Agent
+  // answer. Preserve later user messages (including steer) from the previous materialized head and
+  // retained live events before replacing that head. Do not replay token/output deltas here: those
+  // are intentionally lazy intermediate data and are not idempotent over an already summarized
+  // final answer. This is the same snapshot-plus-live-head rule used by mature timeline replicas,
+  // scoped to the one item class the official summary omits but the transcript must always show.
+  const retainedTurnIds = new Set(snapshot.history.thread.turns.map((turn) => turn.id));
+  const previousUserMessages =
+    previousSnapshot?.history.thread.turns.flatMap((turn) =>
+      retainedTurnIds.has(turn.id)
+        ? turn.items.flatMap((item) =>
+            item.type === "userMessage" ? [{ ...item, turnId: turn.id }] : [],
+          )
+        : [],
+    ) ?? [];
+  const retainedUserMessages = events.flatMap((gatewayEvent) => {
+    if (gatewayEvent.event.type !== "timeline.item.upsert") return [];
+    const item = recordFromUnknown(gatewayEvent.event.item);
+    return item?.type === "userMessage" && retainedTurnIds.has(String(item.turnId)) ? [item] : [];
+  });
+  return [...previousUserMessages, ...retainedUserMessages].reduce(
+    (current, item) =>
+      applyEventToOpenSnapshot(current, { type: "timeline.item.upsert", item }) ?? current,
+    snapshot,
+  );
 }
 
 function applySnapshotReducer(snapshot: ThreadOpenSnapshot, event: AgentEvent) {

@@ -110,13 +110,14 @@ test("fans out a real remote app-server thread to multiple browser clients acros
     .poll(() => inProgressCommandCount(page), { timeout: AGENT_OUTPUT_TIMEOUT_MS })
     .toBeGreaterThan(0);
   const steerMarker = `E2E steer ${Date.now()}`;
+  const steerDisplayText = `追加要求：${steerMarker}`;
   const steerMessageOffset = await realtimeClientMessageCount(page);
   await sendSteerText(page, steerMarker);
   const steerMessage = await waitForRealtimeClientMessage(page, "turn.steer", steerMessageOffset);
   expect(steerMessage.threadId).toBe(threadId);
   expect(steerMessage.text).toContain(steerMarker);
   await expect(
-    page.getByTestId("chat-scroll-area").getByText(`追加要求：${steerMarker}`, { exact: true }),
+    page.getByTestId("chat-scroll-area").getByText(steerDisplayText, { exact: true }),
   ).toBeVisible({
     timeout: 30_000,
   });
@@ -164,7 +165,7 @@ test("fans out a real remote app-server thread to multiple browser clients acros
   await firstIntermediateStepsToggle(page).click();
   await revealVirtualizedChatLocator(
     page,
-    page.getByTestId("chat-scroll-area").getByText(steerMarker, { exact: true }),
+    page.getByTestId("chat-scroll-area").getByText(steerDisplayText, { exact: true }),
   );
   await reloadApp(page);
   await revealVirtualizedChatLocator(page, firstIntermediateStepsToggle(page));
@@ -172,7 +173,7 @@ test("fans out a real remote app-server thread to multiple browser clients acros
   await firstIntermediateStepsToggle(page).click();
   await revealVirtualizedChatLocator(
     page,
-    page.getByTestId("chat-scroll-area").getByText(steerMarker, { exact: true }),
+    page.getByTestId("chat-scroll-area").getByText(steerDisplayText, { exact: true }),
   );
 
   const backgroundThreadId = await remoteWorkspace.startThread(project.id);
@@ -270,6 +271,10 @@ test("fans out a real remote app-server thread to multiple browser clients acros
     await expect
       .poll(() => threadRuntimeStatus(secondPage, host.id, threadId), { timeout: 30_000 })
       .toBe("running");
+    await openThreadFromProjectOrRestoredState(page, host.id, project.id, backgroundThreadId);
+    await expect
+      .poll(async () => currentSelectedThreadId(page), { timeout: 30_000 })
+      .toBe(backgroundThreadId);
     const steerMessageOffset = await realtimeClientMessageCount(secondPage);
     await sendSteerText(secondPage, crossBrowserSteerMarker);
     const steerMessage = await waitForRealtimeClientMessage(
@@ -279,9 +284,10 @@ test("fans out a real remote app-server thread to multiple browser clients acros
     );
     expect(steerMessage.threadId).toBe(threadId);
     expect(steerMessage.text).toContain(crossBrowserSteerMarker);
-    // Do not open the intermediate disclosure here. A successful steer is authoritative at the
-    // Gateway command boundary, so every subscribed browser must receive its user row immediately
-    // instead of discovering it later through thread/items/list.
+    await openThreadFromProjectOrRestoredState(page, host.id, project.id, threadId);
+    // Do not open the intermediate disclosure here. The receiving browser deliberately switched
+    // away while the steer arrived, so returning to the cached thread must render that user row
+    // from realtime history instead of discovering it later through thread/items/list.
     await expect(
       page
         .getByTestId("chat-scroll-area")
