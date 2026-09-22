@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ThreadHistoryItem } from "~~/shared/types";
-import { useTimestamp } from "@vueuse/core";
 import { BrainIcon, ChevronDownIcon, ChevronRightIcon } from "@lucide/vue";
 import { computed, watch } from "vue";
 import { Loader } from "@codex-gateway/ai-elements/loader";
@@ -10,10 +9,11 @@ import DeferredCollapsibleContent from "@/components/common/DeferredCollapsibleC
 import { ChatStickToBottomScrollArea } from "@/components/common/chat-virtualizer";
 import { isItemInProgress, threadItemText } from "@/utils/thread-items";
 import { formatDurationMs, itemCompletedAtMs, itemStartedAtMs } from "@/utils/item-timing";
+import { usePausableTimestamp } from "@/composables/usePausableTimestamp";
 
 const props = defineProps<{ item: ThreadHistoryItem }>();
 const { t } = useI18n();
-const { timestamp: now, pause, resume } = useTimestamp({ controls: true, interval: 100 });
+const { timestamp: now, pause, resume } = usePausableTimestamp(100);
 const text = computed(() => threadItemText(props.item));
 const inProgress = computed(() => isItemInProgress(props.item));
 const startedAt = computed(() => itemStartedAtMs(props.item));

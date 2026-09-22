@@ -3,13 +3,14 @@ import ThreadRow from "./ThreadRow.vue";
 import { formatRelative, pinnedThreadId, pinnedThreadKey } from "../sidebar-utils";
 import type { HostRecord, PinnedThreadRecord } from "../sidebar-types";
 import type { ThreadRuntimeStatus } from "@/stores/gateway/types";
+import type { LongPressContextMenuHandlers } from "@/composables/interactions/useLongPressContextMenu";
 
 const props = defineProps<{
   threads: PinnedThreadRecord[];
   hosts: HostRecord[];
   selectedHostId: number | null;
   selectedThreadId: string | null;
-  longPressHandlers?: Record<string, unknown>;
+  longPressHandlers?: LongPressContextMenuHandlers;
   runtimeStatus: (thread: PinnedThreadRecord) => ThreadRuntimeStatus;
   completionAttention: (thread: PinnedThreadRecord) => boolean;
 }>();

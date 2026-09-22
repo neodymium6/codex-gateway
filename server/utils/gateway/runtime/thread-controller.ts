@@ -32,7 +32,7 @@ export class ThreadController {
     readonly host: HostRecord,
     readonly threadId: string,
     client: AgentRpcClient,
-    private readonly provider: ProviderAdapter,
+    readonly provider: ProviderAdapter,
     connected = false,
     subscribed = false,
     private readonly ownsClient = true,

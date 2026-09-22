@@ -6,7 +6,7 @@ import type { ErrorMessageLabels } from "../gateway/thread-utils/identity";
 import { messageFromError } from "../gateway/thread-utils/identity";
 import type { GatewayErrorContext } from "../gateway/errors";
 import type { TerminalOpenInput } from "../gateway/types";
-import { expectTerminalOpened } from "../gateway-realtime/response-parsers";
+import { expectTerminalClosed, expectTerminalOpened } from "../gateway-realtime/response-parsers";
 import { captureSessionEpoch } from "@/utils/session-epoch";
 import {
   encodeTerminalInputFrame,
@@ -75,13 +75,19 @@ export async function closeTerminalSession(
   ctx: GatewayTerminalTransportContext,
   sessionId: string,
 ) {
-  const terminalStore = useGatewayTerminalStore();
-  terminalStore.removeTerminalSession(sessionId);
-  await useGatewayRealtimeStore()
-    .request((requestId) => ({
-      type: "terminal.close",
-      requestId,
-      sessionId,
-    }))
-    .catch(() => null);
+  try {
+    await useGatewayRealtimeStore().request(
+      (requestId) => ({
+        type: "terminal.close",
+        requestId,
+        sessionId,
+      }),
+      expectTerminalClosed,
+    );
+    // terminal.closed is the authoritative commit and removes the session through the realtime
+    // domain subscriber. Keeping the session until that acknowledgement prevents a failed close
+    // from leaving an invisible server-side terminal alive.
+  } catch (error: unknown) {
+    ctx.setError(messageFromError(error, ctx.t("app.closeTerminalFailed"), ctx.errorLabels));
+  }
 }

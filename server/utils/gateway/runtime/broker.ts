@@ -62,7 +62,7 @@ class ThreadBroker {
       experimentalRawEvents: true,
     });
     const started = this.openService.startedThreadResult(host, projectId, result);
-    await this.registry.retainStartedThreadSubscription(host, started.threadId);
+    await this.registry.retainStartedThreadSubscription(host, started.threadId, providerId);
     return started.result;
   }
 

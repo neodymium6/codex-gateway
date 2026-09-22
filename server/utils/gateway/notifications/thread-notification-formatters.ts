@@ -1,6 +1,6 @@
 import type { GatewayEvent, ThreadGoalStatus, ThreadRuntimeStatus } from "~~/shared/types";
 import { terminalTurnStatus } from "~~/shared/thread-runtime-status";
-import { gatewayMemoryState } from "../state/memory";
+import { currentGatewayMemoryState } from "../state/memory";
 import { hostStore } from "../state/hosts";
 import type { ServerNotification } from "~~/shared/types";
 import { threadGoalFromUnknown, threadHistoryTurnFromUnknown } from "~~/shared/runtime/app-server";
@@ -77,10 +77,10 @@ export function isTerminalGoalStatus(status: ThreadGoalStatus) {
 }
 
 function notificationTarget(event: GatewayEvent) {
-  const pinnedThread = gatewayMemoryState.pinnedThreads.find(
+  const pinnedThread = currentGatewayMemoryState().pinnedThreads.find(
     (thread) => thread.hostId === event.hostId && thread.threadId === event.threadId,
   );
-  const metadata = gatewayMemoryState.threadMetadata.find(
+  const metadata = currentGatewayMemoryState().threadMetadata.find(
     (thread) => thread.hostId === event.hostId && thread.threadId === event.threadId,
   );
   return {
@@ -92,10 +92,10 @@ function notificationTarget(event: GatewayEvent) {
 }
 
 function threadTitle(hostId: number, threadId: string) {
-  const pinnedThread = gatewayMemoryState.pinnedThreads.find(
+  const pinnedThread = currentGatewayMemoryState().pinnedThreads.find(
     (thread) => thread.hostId === hostId && thread.threadId === threadId,
   );
-  const metadata = gatewayMemoryState.threadMetadata.find(
+  const metadata = currentGatewayMemoryState().threadMetadata.find(
     (thread) => thread.hostId === hostId && thread.threadId === threadId,
   );
   return (

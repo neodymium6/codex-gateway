@@ -6,6 +6,14 @@ import { hostSessionEvents } from "./host-session-events";
 import { ThreadController } from "./thread-controller";
 import { runtimeLog } from "./runtime-log";
 import { providerAdapterFor } from "../agent/provider-registry";
+import {
+  hostRuntimeKey,
+  hostRuntimePrefix,
+  threadRuntimeKey,
+  threadRuntimePrefix,
+  type HostRuntimeKey,
+  type ThreadRuntimeKey,
+} from "./runtime-identity";
 
 export type SubscriptionLeaseOwner = "bootstrap" | "browser" | "scoped";
 
@@ -15,6 +23,7 @@ export interface ThreadSubscriptionLease {
 }
 
 interface RetainSubscriptionOptions {
+  providerId?: AgentProviderId;
   upstreamAlreadySubscribed?: boolean;
   deferUpstreamSubscription?: boolean;
   forceUpstreamSubscription?: boolean;
@@ -27,22 +36,33 @@ interface SubscriptionLeases {
 }
 
 export class ControllerRegistry {
-  private readonly controllers = new Map<string, ThreadController>();
-  private readonly pendingControllers = new Map<string, Promise<ThreadController>>();
-  private readonly controllerGenerations = new Map<string, number>();
-  private readonly hostSessions = new Map<string, HostRpcSession>();
-  private readonly subscriptionLeases = new Map<string, SubscriptionLeases>();
-  private readonly bootstrapSubscriptions = new Map<string, ThreadSubscriptionLease>();
+  private readonly controllers = new Map<ThreadRuntimeKey, ThreadController>();
+  private readonly pendingControllers = new Map<ThreadRuntimeKey, Promise<ThreadController>>();
+  private readonly controllerGenerations = new Map<ThreadRuntimeKey, number>();
+  private readonly hostSessions = new Map<HostRuntimeKey, HostRpcSession>();
+  private readonly subscriptionLeases = new Map<ThreadRuntimeKey, SubscriptionLeases>();
+  private readonly bootstrapSubscriptions = new Map<ThreadRuntimeKey, ThreadSubscriptionLease>();
 
-  private async getController(host: HostRecord, threadId: string) {
+  private async getController(
+    host: HostRecord,
+    threadId: string,
+    providerId: AgentProviderId = "codex",
+  ) {
     const userId = this.userKey();
-    const key = this.key(userId, host.id, threadId);
+    const key = this.key(userId, host.id, providerId, threadId);
     let controller = this.controllers.get(key);
     if (!controller) {
       let pending = this.pendingControllers.get(key);
       if (!pending) {
         const generation = this.controllerGeneration(key);
-        pending = this.createController(userId, host, threadId, key, generation).finally(() => {
+        pending = this.createController(
+          userId,
+          host,
+          threadId,
+          providerId,
+          key,
+          generation,
+        ).finally(() => {
           if (this.pendingControllers.get(key) === pending) {
             this.pendingControllers.delete(key);
           }
@@ -67,12 +87,13 @@ export class ControllerRegistry {
     options: RetainSubscriptionOptions = {},
   ): ThreadSubscriptionLease {
     const userId = this.userKey();
-    const key = this.key(userId, host.id, threadId);
+    const providerId = options.providerId ?? "codex";
+    const key = this.key(userId, host.id, providerId, threadId);
     const leases = this.subscriptionLeases.get(key) ?? { bootstrap: 0, browser: 0, scoped: 0 };
     leases[owner] += 1;
     this.subscriptionLeases.set(key, leases);
-    this.logLeaseChange("retain", userId, host, threadId, owner);
-    const ready = this.getController(host, threadId).then(async (controller) => {
+    this.logLeaseChange("retain", userId, host, providerId, threadId, owner);
+    const ready = this.getController(host, threadId, providerId).then(async (controller) => {
       if (options.upstreamAlreadySubscribed === true) {
         // `thread/start` subscribes the same shared Host RPC connection before a controller exists.
         // Adopt that protocol-owned subscription instead of issuing a redundant thread/resume.
@@ -99,7 +120,7 @@ export class ControllerRegistry {
           return;
         }
         this.subscriptionLeases.delete(key);
-        this.logLeaseChange("release", userId, host, threadId, owner);
+        this.logLeaseChange("release", userId, host, providerId, threadId, owner);
         // Replacing a peer subscription releases the old callback before retaining the new one.
         // Deferring zero-count disposal by one microtask coalesces that handoff without keeping
         // abandoned controllers alive indefinitely. The microtask no longer inherits a request or
@@ -125,9 +146,13 @@ export class ControllerRegistry {
     });
   }
 
-  async retainStartedThreadSubscription(host: HostRecord, threadId: string) {
+  async retainStartedThreadSubscription(
+    host: HostRecord,
+    threadId: string,
+    providerId: AgentProviderId = "codex",
+  ) {
     const userId = this.userKey();
-    const key = this.key(userId, host.id, threadId);
+    const key = this.key(userId, host.id, providerId, threadId);
     const existing = this.bootstrapSubscriptions.get(key);
     if (existing !== undefined) return existing.ready;
 
@@ -137,6 +162,7 @@ export class ControllerRegistry {
     // notification materializes the rollout and releases this bootstrap owner after normal browser
     // or scoped owners have observed the same event.
     const lease = this.retainSubscription(host, threadId, "bootstrap", {
+      providerId,
       upstreamAlreadySubscribed: true,
     });
     this.bootstrapSubscriptions.set(key, lease);
@@ -169,12 +195,12 @@ export class ControllerRegistry {
     return this.controllersForUserHost(this.userKey(), hostId);
   }
 
-  hasController(hostId: number, threadId: string) {
-    return this.controllers.has(this.key(this.userKey(), hostId, threadId));
+  hasController(hostId: number, threadId: string, providerId: AgentProviderId = "codex") {
+    return this.controllers.has(this.key(this.userKey(), hostId, providerId, threadId));
   }
 
-  close(hostId: number, threadId: string) {
-    const key = this.key(this.userKey(), hostId, threadId);
+  close(hostId: number, threadId: string, providerId: AgentProviderId = "codex") {
+    const key = this.key(this.userKey(), hostId, providerId, threadId);
     this.releaseBootstrapSubscription(key);
     this.subscriptionLeases.delete(key);
     this.closeByKey(key);
@@ -185,17 +211,19 @@ export class ControllerRegistry {
     this.releaseBootstrapSubscriptionsForHost(userId, hostId);
     this.deleteSubscriptionLeasesForHost(userId, hostId);
     for (const controller of this.controllersForUserHost(userId, hostId)) {
-      const key = this.key(userId, hostId, controller.threadId);
+      const key = this.key(userId, hostId, controller.provider.id, controller.threadId);
       this.subscriptionLeases.delete(key);
       this.invalidateController(key);
       controller.close();
       this.controllers.delete(key);
     }
     this.deletePendingForHost(userId, hostId);
-    const key = this.hostKey(userId, hostId);
-    const session = this.hostSessions.get(key);
-    this.hostSessions.delete(key);
-    session?.close();
+    const prefix = hostRuntimePrefix(userId, hostId);
+    for (const [key, session] of this.hostSessions) {
+      if (!key.startsWith(prefix)) continue;
+      this.hostSessions.delete(key);
+      session.close();
+    }
   }
 
   status() {
@@ -204,26 +232,27 @@ export class ControllerRegistry {
       hostId: controller.host.id,
       threadId: controller.threadId,
       leases: this.subscriptionLeases.get(
-        this.key(userId, controller.host.id, controller.threadId),
+        this.key(userId, controller.host.id, controller.provider.id, controller.threadId),
       ) ?? { bootstrap: 0, browser: 0, scoped: 0 },
       monitorOwned: activeMainThreadMonitor.hasObservedThread(
         controller.host.id,
         controller.threadId,
+        controller.provider.id,
       ),
     }));
   }
 
-  async restoreRetainedSubscriptions(host: HostRecord) {
+  async restoreRetainedSubscriptions(host: HostRecord, providerId: AgentProviderId = "codex") {
     const userId = this.userKey();
-    const prefix = `${userId}:${host.id}:`;
+    const prefix = threadRuntimePrefix(userId, host.id, providerId);
     const threadIds = [...this.subscriptionLeases.entries()]
       .filter(([key, leases]) => key.startsWith(prefix) && leases.browser + leases.scoped > 0)
       .map(([key]) => key.slice(prefix.length));
     await Promise.all(
       threadIds.map(async (threadId) => {
-        const key = this.key(userId, host.id, threadId);
+        const key = this.key(userId, host.id, providerId, threadId);
         if (!this.hasLeases(key)) return;
-        const controller = await this.getController(host, threadId);
+        const controller = await this.getController(host, threadId, providerId);
         if (!this.hasLeases(key)) {
           this.releaseUnleasedController(userId, key);
           return;
@@ -237,10 +266,11 @@ export class ControllerRegistry {
     userId: number,
     host: HostRecord,
     threadId: string,
-    key: string,
+    providerId: AgentProviderId,
+    key: ThreadRuntimeKey,
     generation: number,
   ) {
-    const provider = this.getHostProvider(host);
+    const provider = this.getHostProvider(host, providerId);
     const client = await this.getHostClientForUser(userId, host, provider);
     if (this.controllerGeneration(key) !== generation) {
       throw new Error("Thread controller creation was superseded");
@@ -248,6 +278,7 @@ export class ControllerRegistry {
     const inheritedSubscription = activeMainThreadMonitor.reclaimSubscribedThread(
       host.id,
       threadId,
+      provider.id,
     );
     const controller = new ThreadController(
       host,
@@ -287,8 +318,9 @@ export class ControllerRegistry {
     if (!session) {
       session = new HostRpcSession(
         host,
-        (hostId, threadId) => this.controllers.get(this.key(userId, hostId, threadId)) ?? null,
-        (hostId) => this.controllersForUserHost(userId, hostId),
+        (hostId, threadId) =>
+          this.controllers.get(this.key(userId, hostId, provider.id, threadId)) ?? null,
+        (hostId) => this.controllersForUserHost(userId, hostId, provider.id),
         provider,
         () => this.disposeHostSession(userId, host.id, provider.id, session),
       );
@@ -304,11 +336,14 @@ export class ControllerRegistry {
     return providerAdapterFor(providerId);
   }
 
-  private controllersForUserHost(userId: number, hostId: number) {
+  private controllersForUserHost(userId: number, hostId: number, providerId?: AgentProviderId) {
     return Array.from(this.controllers.values()).filter(
       (controller) =>
         controller.host.id === hostId &&
-        this.controllers.get(this.key(userId, hostId, controller.threadId)) === controller,
+        (providerId === undefined || controller.provider.id === providerId) &&
+        this.controllers.get(
+          this.key(userId, hostId, controller.provider.id, controller.threadId),
+        ) === controller,
     );
   }
 
@@ -333,19 +368,22 @@ export class ControllerRegistry {
     // that transport closes there is no protocol operation that can reattach an unmaterialized
     // thread: thread/resume requires a rollout. Drop the dead owner instead of making every Host
     // reconnect fail while trying to restore something the upstream protocol cannot restore.
-    this.releaseBootstrapSubscriptionsForHost(userId, hostId);
-    for (const controller of this.controllersForUserHost(userId, hostId)) {
-      const key = this.key(userId, hostId, controller.threadId);
+    this.releaseBootstrapSubscriptionsForHost(userId, hostId, providerId);
+    for (const controller of this.controllersForUserHost(userId, hostId, providerId)) {
+      const key = this.key(userId, hostId, providerId, controller.threadId);
       this.invalidateController(key);
       controller.disposeAfterTransportClose();
       this.controllers.delete(key);
     }
-    this.deletePendingForHost(userId, hostId);
+    this.deletePendingForHost(userId, hostId, providerId);
     hostSessionEvents.emitClosed(userId, hostId);
   }
 
-  private deletePendingForHost(userId: number, hostId: number) {
-    const prefix = `${userId}:${hostId}:`;
+  private deletePendingForHost(userId: number, hostId: number, providerId?: AgentProviderId) {
+    const prefix =
+      providerId === undefined
+        ? hostRuntimePrefix(userId, hostId)
+        : threadRuntimePrefix(userId, hostId, providerId);
     for (const key of this.pendingControllers.keys()) {
       if (key.startsWith(prefix)) {
         this.invalidateController(key);
@@ -361,7 +399,7 @@ export class ControllerRegistry {
     }
   }
 
-  private closeByKey(key: string) {
+  private closeByKey(key: ThreadRuntimeKey) {
     this.invalidateController(key);
     this.pendingControllers.delete(key);
     this.controllers.get(key)?.close();
@@ -369,7 +407,7 @@ export class ControllerRegistry {
     this.deleteUnusedControllerGeneration(key);
   }
 
-  private releaseUnleasedController(userId: number, key: string) {
+  private releaseUnleasedController(userId: number, key: ThreadRuntimeKey) {
     const controller = this.controllers.get(key);
     if (controller?.shouldTransferSubscriptionToMonitor() !== true) {
       if (controller !== undefined) {
@@ -388,8 +426,11 @@ export class ControllerRegistry {
       {
         host: controller.host,
         client: controller.client,
+        providerId: controller.provider.id,
         hasController: (threadId) =>
-          this.controllers.has(this.key(userId, controller.host.id, threadId)),
+          this.controllers.has(
+            this.key(userId, controller.host.id, controller.provider.id, threadId),
+          ),
       },
       controller.threadId,
     );
@@ -406,20 +447,27 @@ export class ControllerRegistry {
     this.deleteUnusedControllerGeneration(key);
   }
 
-  private hasLeases(key: string) {
+  private hasLeases(key: ThreadRuntimeKey) {
     const leases = this.subscriptionLeases.get(key);
     return leases !== undefined && leases.bootstrap + leases.browser + leases.scoped > 0;
   }
 
-  private releaseBootstrapSubscription(key: string) {
+  private releaseBootstrapSubscription(key: ThreadRuntimeKey) {
     const lease = this.bootstrapSubscriptions.get(key);
     if (lease === undefined) return;
     this.bootstrapSubscriptions.delete(key);
     lease.release();
   }
 
-  private releaseBootstrapSubscriptionsForHost(userId: number, hostId: number) {
-    const prefix = `${userId}:${hostId}:`;
+  private releaseBootstrapSubscriptionsForHost(
+    userId: number,
+    hostId: number,
+    providerId?: AgentProviderId,
+  ) {
+    const prefix =
+      providerId === undefined
+        ? hostRuntimePrefix(userId, hostId)
+        : threadRuntimePrefix(userId, hostId, providerId);
     for (const key of this.bootstrapSubscriptions.keys()) {
       if (key.startsWith(prefix)) this.releaseBootstrapSubscription(key);
     }
@@ -429,10 +477,11 @@ export class ControllerRegistry {
     action: "retain" | "release",
     userId: number,
     host: HostRecord,
+    providerId: AgentProviderId,
     threadId: string,
     owner: SubscriptionLeaseOwner,
   ) {
-    const leases = this.subscriptionLeases.get(this.key(userId, host.id, threadId)) ?? {
+    const leases = this.subscriptionLeases.get(this.key(userId, host.id, providerId, threadId)) ?? {
       bootstrap: 0,
       browser: 0,
       scoped: 0,
@@ -446,31 +495,31 @@ export class ControllerRegistry {
       bootstrapLeases: leases.bootstrap,
       browserLeases: leases.browser,
       scopedLeases: leases.scoped,
-      controllerCount: this.controllersForUserHost(userId, host.id).length,
-      monitorOwnedCount: activeMainThreadMonitor.observedCount(host.id, userId),
+      controllerCount: this.controllersForUserHost(userId, host.id, providerId).length,
+      monitorOwnedCount: activeMainThreadMonitor.observedCount(host.id, userId, providerId),
     });
   }
 
-  private controllerGeneration(key: string) {
+  private controllerGeneration(key: ThreadRuntimeKey) {
     return this.controllerGenerations.get(key) ?? 0;
   }
 
-  private invalidateController(key: string) {
+  private invalidateController(key: ThreadRuntimeKey) {
     this.controllerGenerations.set(key, this.controllerGeneration(key) + 1);
   }
 
-  private deleteUnusedControllerGeneration(key: string) {
+  private deleteUnusedControllerGeneration(key: ThreadRuntimeKey) {
     if (!this.controllers.has(key) && !this.pendingControllers.has(key)) {
       this.controllerGenerations.delete(key);
     }
   }
 
-  private key(userId: number, hostId: number, threadId: string) {
-    return `${userId}:${hostId}:${threadId}`;
+  private key(userId: number, hostId: number, providerId: AgentProviderId, threadId: string) {
+    return threadRuntimeKey(userId, hostId, providerId, threadId);
   }
 
-  private hostKey(userId: number, hostId: number, providerId: AgentProviderId = "codex") {
-    return `${userId}:${hostId}:${providerId}`;
+  private hostKey(userId: number, hostId: number, providerId: AgentProviderId) {
+    return hostRuntimeKey(userId, hostId, providerId);
   }
 
   private userKey() {

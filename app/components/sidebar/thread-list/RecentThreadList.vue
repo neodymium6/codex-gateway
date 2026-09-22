@@ -3,6 +3,7 @@ import ThreadRow from "./ThreadRow.vue";
 import { formatRelative, threadKey } from "../sidebar-utils";
 import type { ThreadActivitySummary } from "@/stores/gateway-thread-activity";
 import type { ThreadRuntimeStatus } from "@/stores/gateway/types";
+import type { LongPressContextMenuHandlers } from "@/composables/interactions/useLongPressContextMenu";
 
 type RecentThread = ThreadActivitySummary & {
   id: string;
@@ -15,7 +16,7 @@ defineProps<{
   threads: RecentThread[];
   selectedHostId: number | null;
   selectedThreadId: string | null;
-  longPressHandlers?: Record<string, unknown>;
+  longPressHandlers?: LongPressContextMenuHandlers;
 }>();
 
 const emit = defineEmits<{

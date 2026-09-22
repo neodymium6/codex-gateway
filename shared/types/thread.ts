@@ -1,6 +1,18 @@
 import type { GatewayEvent, ProjectRecord } from "./records";
 import type { ThreadHistoryItem, ThreadTimelineHistoryState } from "../thread-history/types";
 import type { AgentProviderId } from "../agent/providers";
+import type { AppServerThread } from "../runtime/app-server";
+
+export type {
+  AppServerSessionSource,
+  AppServerSubAgentSource,
+  AppServerThread,
+  AppServerThreadSection,
+  AppServerThreadStatus,
+  AppServerTurn,
+  CodexErrorInfo,
+  MisalignmentErrorDetails,
+} from "../runtime/app-server";
 
 export type ThreadRuntimeStatus = "idle" | "running" | "completed" | "failed" | "interrupted";
 
@@ -116,136 +128,6 @@ export interface TokenUsageBreakdown {
   cacheWriteInputTokens: number;
   outputTokens: number;
   reasoningOutputTokens: number;
-}
-
-export type AppServerThreadStatus =
-  | { type: "notLoaded" }
-  | { type: "idle" }
-  | { type: "systemError" }
-  | { type: "active"; activeFlags: Array<"waitingOnApproval" | "waitingOnUserInput"> };
-
-export type AppServerSessionSource =
-  | "cli"
-  | "vscode"
-  | "exec"
-  | "appServer"
-  | "unknown"
-  | { custom: string }
-  | { subAgent: AppServerSubAgentSource };
-
-export type AppServerSubAgentSource =
-  | "review"
-  | "compact"
-  | "memory_consolidation"
-  | { other: string }
-  | {
-      thread_spawn: {
-        parent_thread_id: string;
-        depth: number;
-        agent_path: string | null;
-        agent_nickname: string | null;
-        agent_role: string | null;
-      };
-    };
-
-export interface AppServerTurn {
-  id: string;
-  items: ThreadHistoryItem[];
-  itemsView: "notLoaded" | "summary" | "full";
-  status: "completed" | "interrupted" | "failed" | "inProgress";
-  error: {
-    message: string;
-    codexErrorInfo: CodexErrorInfo | null;
-    additionalDetails: string | null;
-    misalignment: MisalignmentErrorDetails | null;
-  } | null;
-  startedAt: number | null;
-  completedAt: number | null;
-  durationMs: number | null;
-}
-
-export interface MisalignmentErrorDetails {
-  errorType: string | null;
-  detailedExplanation: string | null;
-  steer: { message: string } | null;
-}
-
-export type CodexErrorInfo =
-  | "contextWindowExceeded"
-  | "sessionBudgetExceeded"
-  | "usageLimitExceeded"
-  | "rateLimitExceeded"
-  | "serverOverloaded"
-  | "cyberPolicy"
-  | "misalignmentPolicyViolation"
-  | "internalServerError"
-  | "unauthorized"
-  | "badRequest"
-  | "threadRollbackFailed"
-  | "sandboxError"
-  | "other"
-  | { httpConnectionFailed: { httpStatusCode: number | null } }
-  | { responseStreamConnectionFailed: { httpStatusCode: number | null } }
-  | { responseStreamDisconnected: { httpStatusCode: number | null } }
-  | { responseTooManyFailedAttempts: { httpStatusCode: number | null } }
-  | { activeTurnNotSteerable: { turnKind: "review" | "compact" } };
-
-export interface AppServerThreadSection {
-  id: string;
-  name: string;
-  appearance: {
-    icon: string | null;
-    color: string | null;
-  } | null;
-}
-
-/** Exact Codex 0.155 Thread DTO for the experimental API negotiated by Gateway. */
-export interface AppServerThread {
-  id: string;
-  /** Environments selected by a loaded thread; null when the server cannot expose them. */
-  environments:
-    | {
-        environmentId: string;
-        cwd: string;
-        runtimeWorkspaceRoots: string[];
-      }[]
-    | null;
-  extra: Record<never, never> | null;
-  sessionId: string;
-  forkedFromId: string | null;
-  parentThreadId: string | null;
-  preview: string;
-  ephemeral: boolean;
-  section: AppServerThreadSection | null;
-  sectionEnteredAt: number | null;
-  projectId: string | null;
-  historyMode: "legacy" | "paginated";
-  modelProvider: string;
-  model: string | null;
-  reasoningEffort: ReasoningEffort | null;
-  createdAt: number;
-  updatedAt: number;
-  recencyAt: number | null;
-  status: AppServerThreadStatus;
-  path: string | null;
-  cwd: string;
-  cliVersion: string;
-  /** Client or executor that originally created the thread. */
-  originator: string | null;
-  source: AppServerSessionSource;
-  canAcceptDirectInput: boolean | null;
-  threadSource: string | null;
-  agentNickname: string | null;
-  agentRole: string | null;
-  /** Persisted Daybreak preference for this thread. */
-  daybreakEnabled: boolean | null;
-  gitInfo: {
-    sha: string | null;
-    branch: string | null;
-    originUrl: string | null;
-  } | null;
-  name: string | null;
-  turns: AppServerTurn[];
 }
 
 /** Browser/server projection with user-scoped Gateway navigation metadata. */

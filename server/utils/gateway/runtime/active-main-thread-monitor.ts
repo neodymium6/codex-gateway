@@ -1,5 +1,5 @@
 import pLimit from "p-limit";
-import type { AppServerThread, HostRecord } from "~~/shared/types";
+import type { AgentProviderId, AppServerThread, HostRecord } from "~~/shared/types";
 import {
   appServerThreadFromUnknown,
   isAppServerSubAgentThread,
@@ -13,6 +13,13 @@ import { threadIdFromNotification } from "../protocol/thread-payload";
 import { currentGatewayUserId } from "../state/memory";
 import type { AgentRpcClient } from "../agent/provider-adapter";
 import { runtimeLog } from "./runtime-log";
+import {
+  hostRuntimeKey,
+  hostRuntimePrefix,
+  threadRuntimeKey,
+  type HostRuntimeKey,
+  type ThreadRuntimeKey,
+} from "./runtime-identity";
 import { runtimeStatusFromAppThreadStatus } from "~~/shared/thread-runtime-status";
 import { threadMetadataStore } from "../state/thread-metadata";
 
@@ -25,6 +32,7 @@ type ControllerLookup = (threadId: string) => boolean;
 interface MonitorContext {
   host: HostRecord;
   client: AgentRpcClient;
+  providerId: AgentProviderId;
   hasController: ControllerLookup;
 }
 
@@ -41,13 +49,13 @@ interface MonitorContext {
  * running while Gateway was disconnected.
  */
 class ActiveMainThreadMonitor {
-  private readonly observedByHost = new Map<string, Set<string>>();
-  private readonly pendingByThread = new Map<string, Promise<void>>();
-  private readonly pendingRecoveries = new Map<string, Promise<void>>();
-  private readonly generations = new Map<string, number>();
+  private readonly observedByHost = new Map<HostRuntimeKey, Set<string>>();
+  private readonly pendingByThread = new Map<ThreadRuntimeKey, Promise<void>>();
+  private readonly pendingRecoveries = new Map<HostRuntimeKey, Promise<void>>();
+  private readonly generations = new Map<HostRuntimeKey, number>();
 
   async recoverHost(context: MonitorContext) {
-    const hostKey = this.hostKey(context.host.id);
+    const hostKey = this.hostKey(context.host.id, context.providerId);
     const pending = this.pendingRecoveries.get(hostKey);
     if (pending) return pending;
 
@@ -106,7 +114,7 @@ class ActiveMainThreadMonitor {
   }
 
   adoptSubscribedThread(context: MonitorContext, threadId: string) {
-    const hostKey = this.hostKey(context.host.id);
+    const hostKey = this.hostKey(context.host.id, context.providerId);
     let observed = this.observedByHost.get(hostKey);
     if (observed === undefined) {
       observed = new Set();
@@ -128,16 +136,16 @@ class ActiveMainThreadMonitor {
     return this.observeThread(context, threadId);
   }
 
-  hasObservedThread(hostId: number, threadId: string) {
-    return this.observedByHost.get(this.hostKey(hostId))?.has(threadId) === true;
+  hasObservedThread(hostId: number, threadId: string, providerId: AgentProviderId = "codex") {
+    return this.observedByHost.get(this.hostKey(hostId, providerId))?.has(threadId) === true;
   }
 
-  observedCount(hostId: number, userId = requiredUserId()) {
-    return this.observedByHost.get(this.hostKey(hostId, userId))?.size ?? 0;
+  observedCount(hostId: number, userId = requiredUserId(), providerId: AgentProviderId = "codex") {
+    return this.observedByHost.get(this.hostKey(hostId, providerId, userId))?.size ?? 0;
   }
 
-  reclaimSubscribedThread(hostId: number, threadId: string) {
-    const hostKey = this.hostKey(hostId);
+  reclaimSubscribedThread(hostId: number, threadId: string, providerId: AgentProviderId = "codex") {
+    const hostKey = this.hostKey(hostId, providerId);
     const observed = this.observedByHost.get(hostKey);
     if (observed?.delete(threadId) !== true) return false;
     if (observed.size === 0) this.observedByHost.delete(hostKey);
@@ -147,18 +155,28 @@ class ActiveMainThreadMonitor {
   }
 
   forgetHost(userId: number, hostId: number) {
-    const key = this.hostKey(hostId, userId);
-    this.generations.set(key, this.generation(key) + 1);
-    this.observedByHost.delete(key);
-    this.pendingRecoveries.delete(key);
+    const prefix = hostRuntimePrefix(userId, hostId);
+    for (const key of this.generations.keys()) {
+      if (key.startsWith(prefix)) this.generations.set(key, this.generation(key) + 1);
+    }
+    for (const key of this.observedByHost.keys()) {
+      if (key.startsWith(prefix)) this.observedByHost.delete(key);
+    }
+    for (const key of this.pendingRecoveries.keys()) {
+      if (key.startsWith(prefix)) this.pendingRecoveries.delete(key);
+    }
     for (const key of this.pendingByThread.keys()) {
-      if (key.startsWith(`${this.hostKey(hostId, userId)}:`)) {
+      if (key.startsWith(prefix)) {
         this.pendingByThread.delete(key);
       }
     }
   }
 
-  private async recoverLoadedThreads(context: MonitorContext, hostKey: string, generation: number) {
+  private async recoverLoadedThreads(
+    context: MonitorContext,
+    hostKey: HostRuntimeKey,
+    generation: number,
+  ) {
     const threads = await activeLoadedMainThreads(context.client);
     const limit = pLimit(RECOVERY_CONCURRENCY);
     await Promise.all(
@@ -173,11 +191,11 @@ class ActiveMainThreadMonitor {
 
   private async observeThread(context: MonitorContext, threadId: string) {
     if (context.hasController(threadId)) return;
-    const hostKey = this.hostKey(context.host.id);
+    const hostKey = this.hostKey(context.host.id, context.providerId);
     const observed = this.observedByHost.get(hostKey);
     if (observed?.has(threadId) === true) return;
 
-    const key = `${hostKey}:${threadId}`;
+    const key = threadRuntimeKey(requiredUserId(), context.host.id, context.providerId, threadId);
     const pending = this.pendingByThread.get(key);
     if (pending !== undefined) return pending;
 
@@ -220,7 +238,7 @@ class ActiveMainThreadMonitor {
     );
     const resultRecord = recordFromUnknown(result);
     const thread = appServerThreadFromUnknown(resultRecord?.thread ?? result);
-    const hostKey = this.hostKey(context.host.id);
+    const hostKey = this.hostKey(context.host.id, context.providerId);
     if (!this.isCurrent(hostKey, generation) || context.hasController(threadId)) return;
 
     if (thread === null || isAppServerSubAgentThread(thread) || !isActive(thread)) {
@@ -237,7 +255,7 @@ class ActiveMainThreadMonitor {
   }
 
   private async releaseThread(context: MonitorContext, threadId: string) {
-    const hostKey = this.hostKey(context.host.id);
+    const hostKey = this.hostKey(context.host.id, context.providerId);
     const observed = this.observedByHost.get(hostKey);
     if (observed?.delete(threadId) !== true) return;
     if (observed.size === 0) this.observedByHost.delete(hostKey);
@@ -259,15 +277,20 @@ class ActiveMainThreadMonitor {
       });
   }
 
-  private hostKey(hostId: number, userId = requiredUserId()) {
-    return `${userId}:${hostId}`;
+  private hostKey(hostId: number, providerId: AgentProviderId, userId = requiredUserId()) {
+    return hostRuntimeKey(userId, hostId, providerId);
   }
 
-  private generation(key: string) {
-    return this.generations.get(key) ?? 0;
+  private generation(key: HostRuntimeKey) {
+    const generation = this.generations.get(key);
+    if (generation !== undefined) return generation;
+    // Register generation zero immediately. Host teardown can then invalidate every in-flight
+    // recovery without inspecting or parsing thread-level keys.
+    this.generations.set(key, 0);
+    return 0;
   }
 
-  private isCurrent(key: string, generation: number) {
+  private isCurrent(key: HostRuntimeKey, generation: number) {
     return this.generation(key) === generation;
   }
 }

@@ -75,6 +75,7 @@ export class HostRpcSession {
       {
         host: this.host,
         client: this.client,
+        providerId: this.provider.id,
         hasController: (threadId) => this.controllerForThread(this.host.id, threadId) !== null,
       },
       message,

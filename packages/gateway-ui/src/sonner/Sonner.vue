@@ -33,7 +33,10 @@ const delegatedProps = reactiveOmit(props, "class", "toastOptions");
     }"
     :toast-options="{
       classes: {
-        toast: 'max-h-48 overflow-hidden rounded-md',
+        // Notifications float above every workspace panel, so passive toast text must not block
+        // the editor underneath. Keep only Sonner's explicit action controls interactive.
+        toast:
+          'pointer-events-none max-h-48 overflow-hidden rounded-md [&_[data-button]]:pointer-events-auto [&_[data-cancel]]:pointer-events-auto [&_[data-close-button]]:pointer-events-auto',
         content: 'min-w-0',
         title: 'max-h-32 overflow-auto whitespace-pre-wrap break-words',
         description: 'max-h-24 overflow-auto whitespace-pre-wrap break-words',

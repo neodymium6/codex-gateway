@@ -1,4 +1,4 @@
-import type { HostRecord } from "~~/shared/types";
+import type { HostCreateInput, HostRecord, HostUpdateInput } from "~~/shared/types";
 import { gatewayApi } from "@/utils/gateway-api";
 import { useGatewayCatalogStore } from "@/stores/gateway-catalog";
 import { useGatewayConfigStore } from "@/stores/gateway-config";
@@ -28,7 +28,7 @@ export function createHostActions() {
   }
 
   return {
-    async createHost(input: Record<string, unknown>) {
+    async createHost(input: HostCreateInput) {
       const sessionIsCurrent = captureSessionEpoch();
       const catalog = useGatewayCatalogStore();
       const config = useGatewayConfigStore();
@@ -45,7 +45,7 @@ export function createHostActions() {
       return host;
     },
 
-    async updateHost(hostId: number, input: Record<string, unknown>) {
+    async updateHost(hostId: number, input: HostUpdateInput) {
       const sessionIsCurrent = captureSessionEpoch();
       const catalog = useGatewayCatalogStore();
       const host = await gatewayApi<HostRecord>(`/api/hosts/${hostId}`, {

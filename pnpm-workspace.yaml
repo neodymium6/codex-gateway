@@ -91,7 +91,13 @@ minimumReleaseAgeExclude:
   - "@tanstack/vue-virtual@3.13.36"
 
 overrides:
+  # Open File Viewer imports these plugins from its browser entry. Their newer releases pull the
+  # Node-only @napi-rs/canvas binding into Rolldown's static graph, which cannot be emitted as a
+  # browser chunk. Keep the last browser-buildable pair until the upstream packages restore a
+  # browser-specific export; this is intentionally narrower than pinning the entire viewer tree.
+  "@aiden0z/pptx-renderer": 1.2.4
   crossws: 0.4.7
+  emf-converter: 2.0.2
 
 patchedDependencies:
-  '@tanstack/virtual-core@3.17.8': patches/@tanstack__virtual-core@3.17.8.patch
+  "@tanstack/virtual-core@3.17.8": patches/@tanstack__virtual-core@3.17.8.patch

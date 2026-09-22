@@ -219,6 +219,8 @@
     "popupBlocked": "Popup blocked",
     "popupBlockedDescription": "Allow popups for Codex Gateway and retry.",
     "closeTerminal": "Close terminal",
+    "closeTerminalFailed": "Failed to close terminal",
+    "closeBrowserPreviewFailed": "Failed to close browser preview",
     "terminalExited": "Terminal exited",
     "pinThread": "Pin thread",
     "unpinThread": "Unpin thread",

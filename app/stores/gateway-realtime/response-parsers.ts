@@ -12,6 +12,11 @@ export function expectBrowserOpened(message: RealtimeResponseMessage) {
   return message;
 }
 
+export function expectBrowserClosed(message: RealtimeResponseMessage) {
+  if (message.type !== "browser.closed") unexpectedResponse("browser.closed", message.type);
+  return message;
+}
+
 export function expectFileGitComparison(message: RealtimeResponseMessage) {
   if (message.type !== "file.git.comparison") {
     unexpectedResponse("file.git.comparison", message.type);
@@ -63,6 +68,11 @@ export function expectThreadGoalSnapshot(message: RealtimeResponseMessage) {
 
 export function expectTerminalOpened(message: RealtimeResponseMessage) {
   if (message.type !== "terminal.opened") unexpectedResponse("terminal.opened", message.type);
+  return message;
+}
+
+export function expectTerminalClosed(message: RealtimeResponseMessage) {
+  if (message.type !== "terminal.closed") unexpectedResponse("terminal.closed", message.type);
   return message;
 }
 

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { Clock3Icon } from "@lucide/vue";
-import { useTimestamp } from "@vueuse/core";
 import { computed, watch } from "vue";
 import { formatDurationMs } from "@/utils/item-timing";
 import { resolvedTurnDurationMs, type DisplayedTurnTiming } from "@/utils/turn-timing";
+import { usePausableTimestamp } from "@/composables/usePausableTimestamp";
 
 const props = defineProps<{ timing: DisplayedTurnTiming }>();
 const { t } = useI18n();
-const { timestamp: now, pause, resume } = useTimestamp({ controls: true, interval: 1000 });
+const { timestamp: now, pause, resume } = usePausableTimestamp(1000);
 const duration = computed(() => resolvedTurnDurationMs(props.timing, now.value));
 const label = computed(() => (duration.value === null ? null : formatDurationMs(duration.value)));
 

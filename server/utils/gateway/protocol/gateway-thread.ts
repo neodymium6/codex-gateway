@@ -1,5 +1,5 @@
 import type { AppServerThread, GatewayThread } from "~~/shared/types";
-import { gatewayMemoryState } from "../state/memory";
+import { currentGatewayMemoryState } from "../state/memory";
 
 /**
  * The browser boundary is the only place that enriches an official app-server Thread. Runtime
@@ -11,7 +11,7 @@ export function gatewayThreadFromAppServer(
   projectId: number | null,
   thread: AppServerThread,
 ): GatewayThread {
-  const pinned = gatewayMemoryState.pinnedThreads.find(
+  const pinned = currentGatewayMemoryState().pinnedThreads.find(
     (candidate) => candidate.hostId === hostId && candidate.threadId === thread.id,
   );
   // App-server 0.149 introduced its own global project catalog with opaque string IDs. Gateway

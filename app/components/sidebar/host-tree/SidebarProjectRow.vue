@@ -18,13 +18,14 @@ import {
 } from "@codex-gateway/ui/context-menu";
 import { selectedRowClass } from "../sidebar-utils";
 import SidebarRowLabel from "../SidebarRowLabel.vue";
+import type { LongPressContextMenuHandlers } from "@/composables/interactions/useLongPressContextMenu";
 
 const props = defineProps<{
   project: ProjectRecord;
   expanded: boolean;
   selected: boolean;
   missing?: boolean;
-  longPressHandlers?: Record<string, unknown>;
+  longPressHandlers?: LongPressContextMenuHandlers;
 }>();
 
 const emit = defineEmits<{

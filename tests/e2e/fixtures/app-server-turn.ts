@@ -1,8 +1,8 @@
-import type { AppServerTurn, ThreadHistoryItem } from "../../../shared/types";
+import type { AppServerTurn } from "../../../shared/types";
 
 export type AppServerTurnFixture = Pick<AppServerTurn, "id"> &
   Partial<Omit<AppServerTurn, "id" | "items">> & {
-    items?: ThreadHistoryItem[];
+    items?: AppServerTurn["items"];
   };
 
 export function appServerTurnFixture(fixture: AppServerTurnFixture): AppServerTurn {

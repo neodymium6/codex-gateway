@@ -1,7 +1,7 @@
 import { deliverBarkNotification } from "./bark-delivery";
 import { notificationRealtimeEvents } from "./notification-realtime-events";
 import type { ServerNotification } from "~~/shared/types";
-import { gatewayMemoryState } from "../state/memory";
+import { currentGatewayMemoryState } from "../state/memory";
 
 const MAX_PUBLISHED_NOTIFICATION_KEYS = 1_000;
 
@@ -19,12 +19,14 @@ export const notificationCenter = {
 };
 
 function alreadyPublished(key: string) {
-  return gatewayMemoryState.publishedNotificationKeys.includes(key);
+  return currentGatewayMemoryState().publishedNotificationKeys.includes(key);
 }
 
 function markPublished(key: string) {
-  gatewayMemoryState.publishedNotificationKeys = [
-    ...gatewayMemoryState.publishedNotificationKeys.slice(-(MAX_PUBLISHED_NOTIFICATION_KEYS - 1)),
+  currentGatewayMemoryState().publishedNotificationKeys = [
+    ...currentGatewayMemoryState().publishedNotificationKeys.slice(
+      -(MAX_PUBLISHED_NOTIFICATION_KEYS - 1),
+    ),
     key,
   ];
 }

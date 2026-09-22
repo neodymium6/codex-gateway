@@ -1,7 +1,8 @@
 import type { BrowserPreviewTarget } from "~~/shared/types";
-import { useGatewayBrowserStore } from "./index";
 import { useGatewayRealtimeStore } from "../gateway-realtime";
-import { expectBrowserOpened } from "../gateway-realtime/response-parsers";
+import { useGatewayBootstrapStore } from "../gateway-bootstrap";
+import { expectBrowserClosed, expectBrowserOpened } from "../gateway-realtime/response-parsers";
+import { messageFromError } from "../gateway/thread-utils/identity";
 
 export async function openBrowserPreview(input: BrowserPreviewTarget) {
   // Browser panels also carry UI-only fields such as `title`. TypeScript's structural typing
@@ -32,10 +33,19 @@ function browserPreviewWireTarget(input: BrowserPreviewTarget): BrowserPreviewTa
 }
 
 export async function closeBrowserPreview(sessionId: string) {
-  useGatewayBrowserStore().removeSession(sessionId);
-  await useGatewayRealtimeStore()
-    .request((requestId) => ({ type: "browser.close", requestId, sessionId }))
-    .catch(() => null);
+  const gateway = useGatewayBootstrapStore();
+  try {
+    await useGatewayRealtimeStore().request(
+      (requestId) => ({ type: "browser.close", requestId, sessionId }),
+      expectBrowserClosed,
+    );
+    // browser.closed owns removal for the same reason browser.opened owns insertion: one realtime
+    // event boundary keeps every browser tab consistent and preserves the session on close failure.
+  } catch (error: unknown) {
+    gateway.setError(
+      messageFromError(error, gateway.t("app.closeBrowserPreviewFailed"), gateway.errorLabels),
+    );
+  }
 }
 
 export async function setBrowserPreviewInsecureTls(sessionId: string, allowInsecureTls: boolean) {

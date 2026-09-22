@@ -1,5 +1,5 @@
 import type { TmuxMonitorThreadBinding } from "~~/shared/types";
-import { gatewayMemoryState } from "../state/memory";
+import { currentGatewayMemoryState } from "../state/memory";
 import { threadMetadataStore } from "../state/thread-metadata";
 import { firstNonEmptyString } from "~~/shared/utils/strings";
 
@@ -9,7 +9,7 @@ export function resolveTmuxThreadBinding(
 ): TmuxMonitorThreadBinding | null {
   if (requested === null || requested === undefined) return null;
   const metadata = threadMetadataStore.get(hostId, requested.threadId);
-  const pinned = gatewayMemoryState.pinnedThreads.find(
+  const pinned = currentGatewayMemoryState().pinnedThreads.find(
     (thread) => thread.hostId === hostId && thread.threadId === requested.threadId,
   );
   return {
