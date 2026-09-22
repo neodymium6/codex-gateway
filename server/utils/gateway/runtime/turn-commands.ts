@@ -9,6 +9,7 @@ import type { ThreadOpenService } from "./thread-open-service";
 import { recordFromUnknown, stringFromUnknown } from "~~/shared/utils/records";
 import { trimmedOrFallback } from "~~/shared/utils/strings";
 import { parseTurnStartResponse, parseTurnSteerResponse } from "~~/shared/runtime/app-server";
+import { recordAcceptedUserMessage } from "./accepted-user-message";
 
 export class ThreadTurnCommandService {
   constructor(
@@ -30,6 +31,16 @@ export class ThreadTurnCommandService {
           parseTurnStartResponse,
         ),
       );
+      const turnId = result.turn?.id === undefined ? "" : String(result.turn.id);
+      if (turnId !== "") {
+        recordAcceptedUserMessage({
+          hostId: host.id,
+          threadId,
+          turnId,
+          clientUserMessageId,
+          content: buildUserInput(input),
+        });
+      }
       controller.markActiveMainThread();
       return result;
     });
@@ -56,6 +67,13 @@ export class ThreadTurnCommandService {
             parseTurnSteerResponse,
           ),
         );
+        recordAcceptedUserMessage({
+          hostId: host.id,
+          threadId,
+          turnId: result.turnId ?? input.expectedTurnId,
+          clientUserMessageId,
+          content: buildUserInput(input),
+        });
         controller.markActiveMainThread();
         return result;
       })

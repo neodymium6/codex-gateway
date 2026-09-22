@@ -254,6 +254,43 @@ test("fans out a real remote app-server thread to multiple browser clients acros
       )
       .toBe(true);
 
+    const crossBrowserSteerMarker = `E2E 跨浏览器 steer ${Date.now()}`;
+    await page
+      .getByPlaceholder("输入后续修改要求")
+      .fill(
+        [
+          `请等待另一页面追加要求后回复：${crossBrowserSteerMarker}`,
+          "运行 sleep 12; printf 'cross-browser steer ready\\n'",
+        ].join("\n"),
+      );
+    await page.getByTestId("send-turn-button").click();
+    await expect
+      .poll(() => inProgressCommandCount(page), { timeout: AGENT_OUTPUT_TIMEOUT_MS })
+      .toBeGreaterThan(0);
+    await expect
+      .poll(() => threadRuntimeStatus(secondPage, host.id, threadId), { timeout: 30_000 })
+      .toBe("running");
+    const steerMessageOffset = await realtimeClientMessageCount(secondPage);
+    await sendSteerText(secondPage, crossBrowserSteerMarker);
+    const steerMessage = await waitForRealtimeClientMessage(
+      secondPage,
+      "turn.steer",
+      steerMessageOffset,
+    );
+    expect(steerMessage.threadId).toBe(threadId);
+    expect(steerMessage.text).toContain(crossBrowserSteerMarker);
+    // Do not open the intermediate disclosure here. A successful steer is authoritative at the
+    // Gateway command boundary, so every subscribed browser must receive its user row immediately
+    // instead of discovering it later through thread/items/list.
+    await expect(
+      page
+        .getByTestId("chat-scroll-area")
+        .getByText(`追加要求：${crossBrowserSteerMarker}`, { exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("send-turn-button")).toHaveAttribute("aria-label", "已完成", {
+      timeout: AGENT_OUTPUT_TIMEOUT_MS,
+    });
+
     await page.getByTestId(`thread-button-${threadId}`).click({ button: "right" });
     await page.getByRole("menuitem", { name: /置顶会话|Pin thread/ }).click();
     await expect(page.getByTestId(`pinned-thread-button-${threadId}`)).toBeVisible();
@@ -464,7 +501,11 @@ async function activeRemoteTurnId(page: Page) {
       navigation.selectedThreadId !== ""
         ? `${navigation.selectedHostId}:${navigation.selectedThreadId}`
         : "";
-    return String(runtime.activeTerminalProcessByThreadKey[key]?.turnId ?? "");
+    return String(
+      runtime.activeTurnIdsByThreadKey[key] ??
+        runtime.activeTerminalProcessByThreadKey[key]?.turnId ??
+        "",
+    );
   });
 }
 
