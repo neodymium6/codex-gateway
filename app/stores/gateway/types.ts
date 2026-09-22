@@ -43,6 +43,8 @@ export interface ThreadViewState {
   olderTurnsCursor: string | null;
   newerTurnsCursor: string | null;
   lastEventId: number;
+  /** Highest event id already reduced into this view's history. */
+  appliedEventId?: number;
   eventEpoch: string;
   loading: boolean;
   error: string | null;

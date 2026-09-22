@@ -96,6 +96,7 @@ export function activateThreadViewFromCache(hostId: number, threadId: string) {
   views.olderTurnsCursor = view.olderTurnsCursor;
   views.newerTurnsCursor = view.newerTurnsCursor;
   views.lastEventId = view.lastEventId;
+  views.appliedEventId = view.appliedEventId ?? view.lastEventId;
   views.eventEpoch = view.eventEpoch;
   return true;
 }
@@ -122,6 +123,7 @@ export function saveSelectedThreadView() {
     olderTurnsCursor: views.olderTurnsCursor,
     newerTurnsCursor: views.newerTurnsCursor,
     lastEventId: views.lastEventId,
+    appliedEventId: views.appliedEventId,
     eventEpoch: views.eventEpoch,
     loading: false,
     error: null,
@@ -160,6 +162,20 @@ export function appendEventsToThreadView(events: GatewayEvent[]) {
   });
 }
 
+export function markThreadEventsApplied(events: GatewayEvent[]) {
+  if (events.length === 0) return;
+  const views = useGatewayThreadViewStore();
+  const first = events[0]!;
+  const view = views.threadViews[threadViewKey(first.hostId, first.threadId)];
+  if (view === undefined) return;
+  patchThreadView(first.hostId, first.threadId, {
+    appliedEventId: Math.max(
+      view.appliedEventId ?? view.lastEventId,
+      ...events.map((event) => event.id),
+    ),
+  });
+}
+
 function emptyThreadView(hostId: number, threadId: string): ThreadViewState {
   return {
     hostId,
@@ -172,6 +188,7 @@ function emptyThreadView(hostId: number, threadId: string): ThreadViewState {
     olderTurnsCursor: null,
     newerTurnsCursor: null,
     lastEventId: 0,
+    appliedEventId: 0,
     eventEpoch: "",
     loading: false,
     error: null,
