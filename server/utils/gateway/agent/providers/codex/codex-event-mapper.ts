@@ -249,6 +249,30 @@ export function mapCodexNotification(notification: CodexNotification): MapperRes
     };
   }
 
+  if (method === "item/reasoning/summaryPartAdded") {
+    const itemId = stringFromUnknown(p.itemId);
+    const turnId = stringFromUnknown(p.turnId);
+    const summaryIndex = numericParam(p.summaryIndex);
+    if (
+      itemId === null ||
+      turnId === null ||
+      summaryIndex === undefined ||
+      !Number.isInteger(summaryIndex) ||
+      summaryIndex < 0
+    ) {
+      return null;
+    }
+    return {
+      event: {
+        type: "timeline.item.reasoningSummaryPartAdded",
+        itemId,
+        turnId,
+        summaryIndex,
+      },
+      emittedAt: emittedAtMs,
+    };
+  }
+
   if (method === "item/reasoning/textDelta") {
     if (!stringFromUnknown(p.itemId) || !stringFromUnknown(p.turnId)) return null;
     return {

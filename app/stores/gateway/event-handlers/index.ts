@@ -37,9 +37,10 @@ function turnIdFromEvent(event: import("~~/shared/agent/events").AgentEvent) {
   if (
     event.type === "turn.diff.updated" ||
     event.type === "turn.plan.updated" ||
-    event.type === "timeline.item.delta"
+    event.type === "timeline.item.delta" ||
+    event.type === "timeline.item.reasoningSummaryPartAdded"
   ) {
-    return event.type === "turn.diff.updated" ? event.turnId : event.turnId;
+    return event.turnId;
   }
   if (event.type === "timeline.item.upsert") return event.item.turnId;
   return null;

@@ -96,6 +96,7 @@ function isKnownCodexNotificationMethod(method: string) {
     "item/agentMessage/delta",
     "item/plan/delta",
     "item/reasoning/summaryTextDelta",
+    "item/reasoning/summaryPartAdded",
     "item/reasoning/textDelta",
     "item/commandExecution/outputDelta",
     "thread/status/changed",

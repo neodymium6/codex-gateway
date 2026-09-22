@@ -26,11 +26,12 @@ import { currentGatewayUserId } from "../state/memory";
 import { parseThreadReadResult, parseThreadStartResult } from "~~/shared/runtime/app-server";
 import { gatewayThreadFromAppServer } from "../protocol/gateway-thread";
 import type { ThreadHistoryReader } from "./thread-history-reader";
+import { installRecoveredTurnTail } from "./thread-tail-recovery";
 
 export class ThreadOpenService {
   private readonly pendingRefreshes = new Map<
     string,
-    { limit: number; promise: Promise<ReturnTypeResult> }
+    { limit: number; recoverLatestTail: boolean; promise: Promise<ReturnTypeResult> }
   >();
 
   constructor(
@@ -48,6 +49,25 @@ export class ThreadOpenService {
     const cachedSnapshot = threadSnapshotStore.get(host.id, threadId);
     if (cachedSnapshot) {
       if (snapshotSatisfiesTurnLimit(cachedSnapshot, limit)) {
+        if (
+          activationController !== undefined &&
+          !activationController.isSubscribed() &&
+          this.isThreadRunning(host.id, threadId)
+        ) {
+          runtimeLog("thread cache continuity refresh", {
+            hostId: host.id,
+            threadId,
+            projectId,
+          });
+          return this.refreshThreadState(
+            host,
+            threadId,
+            projectId,
+            limit,
+            activationController,
+            true,
+          );
+        }
         // Runtime notifications are projected into this snapshot as they arrive, including the
         // active Turn's cumulative output and status. Re-reading a running thread here would make
         // every browser activation call thread/turns/list again. For legacy rollouts app-server
@@ -130,6 +150,7 @@ export class ThreadOpenService {
     projectId: number | null,
     limit = INITIAL_TURN_PAGE_LIMIT,
     activationController?: ThreadController,
+    recoverLatestTail = false,
   ): Promise<ReturnTypeResult> {
     const key = refreshKey(host.id, threadId);
     const pending = this.pendingRefreshes.get(key);
@@ -138,9 +159,18 @@ export class ThreadOpenService {
       // narrower one. Wait for the narrow refresh to settle, then retry so the server cache
       // monotonically expands to the requested page depth instead of racing two snapshots into the
       // same store entry.
-      if (pending.limit >= limit) return pending.promise;
+      if (pending.limit >= limit && (!recoverLatestTail || pending.recoverLatestTail)) {
+        return pending.promise;
+      }
       await pending.promise;
-      return this.refreshThreadState(host, threadId, projectId, limit, activationController);
+      return this.refreshThreadState(
+        host,
+        threadId,
+        projectId,
+        limit,
+        activationController,
+        recoverLatestTail,
+      );
     }
 
     const promise = this.performThreadStateRefresh(
@@ -149,8 +179,9 @@ export class ThreadOpenService {
       projectId,
       limit,
       activationController,
+      recoverLatestTail,
     );
-    this.pendingRefreshes.set(key, { limit, promise });
+    this.pendingRefreshes.set(key, { limit, recoverLatestTail, promise });
     try {
       return await promise;
     } finally {
@@ -189,14 +220,32 @@ export class ThreadOpenService {
     projectId: number | null,
     limit: number,
     activationController?: ThreadController,
+    recoverLatestTail = false,
   ) {
-    const { snapshot, resolvedProjectId } = await this.loadRemoteOpenSnapshot(
+    const loaded = await this.loadRemoteOpenSnapshot(
       host,
       threadId,
       projectId,
       limit,
       activationController,
     );
+    let { snapshot } = loaded;
+    const { resolvedProjectId } = loaded;
+    if (recoverLatestTail && snapshot.thread.historyMode === "paginated") {
+      const latestTurn = snapshot.history.thread.turns.at(-1);
+      const latestTurnId = latestTurn?.id === undefined ? "" : String(latestTurn.id);
+      if (latestTurnId !== "") {
+        const recovered = await this.historyReader.recoverLatestTurnTail(
+          host,
+          threadId,
+          latestTurnId,
+        );
+        snapshot = installRecoveredTurnTail(snapshot, recovered);
+        if (activationController === undefined)
+          threadSnapshotStore.set(host.id, threadId, snapshot);
+        else activationController.setOpenSnapshot(snapshot);
+      }
+    }
     const status = runtimeStatusFromSnapshotState(snapshot.thread, snapshot.history) ?? "completed";
     // The refresh event is the backend's canonical correction after reconnect
     // or stale running scans; clients must converge on this status.
