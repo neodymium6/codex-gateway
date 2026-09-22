@@ -8,6 +8,14 @@ interface LongPressContextMenuOptions {
   moveTolerance?: number;
 }
 
+export interface LongPressContextMenuHandlers {
+  onPointerdown: (event: PointerEvent) => void;
+  onPointermove: (event: PointerEvent) => void;
+  onPointerup: (event: PointerEvent) => void;
+  onPointercancel: (event: PointerEvent) => void;
+  onClick: (event: MouseEvent) => void;
+}
+
 export function useLongPressContextMenu(options: LongPressContextMenuOptions = {}) {
   const delayMs = options.delayMs ?? 550;
   const menuWidthEstimate = options.menuWidthEstimate ?? 220;
@@ -114,6 +122,6 @@ export function useLongPressContextMenu(options: LongPressContextMenuOptions = {
       onPointerup: onPointerEnd,
       onPointercancel: onPointerEnd,
       onClick,
-    },
+    } satisfies LongPressContextMenuHandlers,
   };
 }

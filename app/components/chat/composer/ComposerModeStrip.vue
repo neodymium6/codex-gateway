@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useTimestamp } from "@vueuse/core";
 import { XIcon } from "@lucide/vue";
 import { computed, watch } from "vue";
 import type { ThreadGoal } from "~~/shared/types";
@@ -7,6 +6,7 @@ import ComposerGoalDetailsDialog from "@/components/chat/composer/ComposerGoalDe
 import type { ComposerGoalPendingAction } from "@/composables/composer/useComposerGoalControls";
 import { Button } from "@codex-gateway/ui/button";
 import { formatGoalElapsed } from "@/utils/thread-goal-display";
+import { usePausableTimestamp } from "@/composables/usePausableTimestamp";
 
 const props = defineProps<{
   planModeActive: boolean;
@@ -25,7 +25,7 @@ const emit = defineEmits<{
   clearGoal: [];
 }>();
 
-const { timestamp: now, pause, resume } = useTimestamp({ controls: true, interval: 250 });
+const { timestamp: now, pause, resume } = usePausableTimestamp(250);
 
 const currentGoal = computed(() => props.goal);
 const goalElapsedSeconds = computed(() => {

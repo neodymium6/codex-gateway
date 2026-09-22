@@ -5,19 +5,17 @@ import {
   threadHistoryItemFromUnknown,
 } from "~~/shared/runtime/app-server";
 import { trimmedOrNull } from "~~/shared/utils/strings";
-import { gatewayMemoryState, nowIso } from "./memory";
+import { currentGatewayMemoryState, nowIso } from "./memory";
 
 export const subAgentThreadStore = {
   pruneToHosts(hostIds: Set<number>) {
-    gatewayMemoryState.subAgentThreads = gatewayMemoryState.subAgentThreads.filter((thread) =>
-      hostIds.has(thread.hostId),
-    );
+    currentGatewayMemoryState().subAgentThreads =
+      currentGatewayMemoryState().subAgentThreads.filter((thread) => hostIds.has(thread.hostId));
   },
 
   deleteForHost(hostId: number) {
-    gatewayMemoryState.subAgentThreads = gatewayMemoryState.subAgentThreads.filter(
-      (thread) => thread.hostId !== hostId,
-    );
+    currentGatewayMemoryState().subAgentThreads =
+      currentGatewayMemoryState().subAgentThreads.filter((thread) => thread.hostId !== hostId);
   },
 
   record(hostId: number, threadId: string, parentThreadId: string | null = null) {
@@ -26,22 +24,22 @@ export const subAgentThreadStore = {
       return;
     }
     const updatedAt = nowIso();
-    const index = gatewayMemoryState.subAgentThreads.findIndex(
+    const index = currentGatewayMemoryState().subAgentThreads.findIndex(
       (thread) => thread.hostId === hostId && thread.threadId === normalizedThreadId,
     );
     if (index >= 0) {
-      const existing = gatewayMemoryState.subAgentThreads[index];
+      const existing = currentGatewayMemoryState().subAgentThreads[index];
       if (existing === undefined) {
         return;
       }
-      gatewayMemoryState.subAgentThreads[index] = {
+      currentGatewayMemoryState().subAgentThreads[index] = {
         ...existing,
         parentThreadId: parentThreadId ?? existing.parentThreadId,
         updatedAt,
       };
       return;
     }
-    gatewayMemoryState.subAgentThreads.push({
+    currentGatewayMemoryState().subAgentThreads.push({
       hostId,
       threadId: normalizedThreadId,
       parentThreadId,
@@ -63,7 +61,7 @@ export const subAgentThreadStore = {
   },
 
   isSubAgentThread(hostId: number, threadId: string) {
-    return gatewayMemoryState.subAgentThreads.some(
+    return currentGatewayMemoryState().subAgentThreads.some(
       (thread) => thread.hostId === hostId && thread.threadId === threadId,
     );
   },

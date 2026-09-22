@@ -1,16 +1,14 @@
 import { z } from "zod";
 import type {
-  AppServerThread,
   ApprovalPolicy,
-  RpcEnvelope,
   ThreadCollaborationMode,
   ThreadAttachment,
   ThreadAttachmentsPage,
   ThreadGoal,
-  ThreadHistoryItem,
-  ThreadHistoryTurn,
   ThreadSettingsState,
-} from "../types";
+} from "../types/thread";
+import type { RpcEnvelope } from "../types/records";
+import type { ThreadHistoryItem, ThreadHistoryTurn } from "../thread-history/types";
 
 const rpcIdSchema = z.union([z.string(), z.number()]);
 const rpcErrorSchema = z
@@ -174,6 +172,12 @@ export const threadTurnSchema = z
   })
   .strict();
 
+export type AppServerTurn = z.infer<typeof threadTurnSchema>;
+export type CodexErrorInfo = NonNullable<NonNullable<AppServerTurn["error"]>["codexErrorInfo"]>;
+export type MisalignmentErrorDetails = NonNullable<
+  NonNullable<AppServerTurn["error"]>["misalignment"]
+>;
+
 export const turnsPageSchema = z
   .object({
     data: z.array(threadTurnSchema),
@@ -216,6 +220,8 @@ export const appServerThreadStatusSchema = z.discriminatedUnion("type", [
     })
     .strict(),
 ]);
+
+export type AppServerThreadStatus = z.infer<typeof appServerThreadStatusSchema>;
 
 export function appServerThreadStatusFromUnknown(value: unknown) {
   const parsed = appServerThreadStatusSchema.safeParse(value);
@@ -312,6 +318,14 @@ export const appServerThreadSchema = z
     turns: z.array(threadTurnSchema),
   })
   .strict();
+
+export type AppServerThread = z.infer<typeof appServerThreadSchema>;
+export type AppServerThreadSection = NonNullable<AppServerThread["section"]>;
+export type AppServerSessionSource = AppServerThread["source"];
+export type AppServerSubAgentSource = Extract<
+  AppServerSessionSource,
+  { subAgent: unknown }
+>["subAgent"];
 
 export const gatewayThreadSchema = appServerThreadSchema.omit({ projectId: true }).extend({
   appServerProjectId: z.string().nullable(),

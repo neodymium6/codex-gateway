@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { ThreadHistoryItem } from "~~/shared/types";
-import { useTimestamp } from "@vueuse/core";
 import { ArchiveIcon, CheckCircle2Icon, Loader2Icon } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { Checkpoint, CheckpointIcon } from "@codex-gateway/ai-elements/checkpoint";
 import { isItemInProgress } from "@/utils/thread-items";
 import { formatDurationMs, itemCompletedAtMs, itemStartedAtMs } from "@/utils/item-timing";
+import { usePausableTimestamp } from "@/composables/usePausableTimestamp";
 
 const props = defineProps<{ item: ThreadHistoryItem }>();
 
 const { t } = useI18n();
-const { timestamp: now, pause, resume } = useTimestamp({ controls: true, interval: 100 });
+const { timestamp: now, pause, resume } = usePausableTimestamp(100);
 const localStartedAt = ref(Date.now());
 
 const inProgress = computed(() => isItemInProgress(props.item));

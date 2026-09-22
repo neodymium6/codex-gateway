@@ -1,4 +1,10 @@
-import type { ModelListResult, ProjectRecord, RemoteDirectoryEntry } from "~~/shared/types";
+import type {
+  ModelListResult,
+  ProjectCreateInput,
+  ProjectRecord,
+  ProjectUpdateInput,
+  RemoteDirectoryEntry,
+} from "~~/shared/types";
 import { gatewayApi } from "@/utils/gateway-api";
 import { useGatewayCatalogStore } from "@/stores/gateway-catalog";
 import { useGatewayConfigStore } from "@/stores/gateway-config";
@@ -95,7 +101,7 @@ export function createProjectActions() {
       await catalog.listModels();
     },
 
-    async createProject(input: Record<string, unknown>) {
+    async createProject(input: ProjectCreateInput) {
       const sessionIsCurrent = captureSessionEpoch();
       const catalog = useGatewayCatalogStore();
       const config = useGatewayConfigStore();
@@ -116,7 +122,7 @@ export function createProjectActions() {
       return project;
     },
 
-    async updateProject(projectId: number, input: Record<string, unknown>) {
+    async updateProject(projectId: number, input: ProjectUpdateInput) {
       const sessionIsCurrent = captureSessionEpoch();
       const catalog = useGatewayCatalogStore();
       const navigation = useGatewayNavigationStore();

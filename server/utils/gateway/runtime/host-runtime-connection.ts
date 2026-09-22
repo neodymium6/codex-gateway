@@ -30,6 +30,7 @@ export async function connectHostRuntime(slot: HostRuntimeSlot, isCurrent: () =>
     await activeMainThreadMonitor.recoverHost({
       host: slot.host,
       client,
+      providerId: "codex",
       hasController: (threadId) => threadBroker.hasController(slot.host.id, threadId),
     });
     if (!isCurrent()) return;

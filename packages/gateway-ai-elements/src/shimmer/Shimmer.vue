@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CSSProperties, HTMLAttributes } from "vue";
 import { cn } from "@codex-gateway/ui/utils";
-import { motion } from "motion-v";
+import { Motion } from "motion-v";
 import { computed, useSlots } from "vue";
 
 export interface TextShimmerProps {
@@ -45,22 +45,16 @@ const componentClasses = computed(() =>
   ),
 );
 
-const componentStyle = computed(
-  (): CSSProperties => ({
-    "--spread": `${dynamicSpread.value}px`,
-    backgroundImage:
-      "var(--bg), linear-gradient(var(--color-muted-foreground), var(--color-muted-foreground))",
-  }),
-);
-
-const MotionComponent = computed(() => {
-  return motion[props.as as keyof typeof motion] || motion.p;
-});
+const componentStyle = computed((): CSSProperties => ({
+  "--spread": `${dynamicSpread.value}px`,
+  backgroundImage:
+    "var(--bg), linear-gradient(var(--color-muted-foreground), var(--color-muted-foreground))",
+}));
 </script>
 
 <template>
-  <component
-    :is="MotionComponent"
+  <Motion
+    :as="as"
     :class="componentClasses"
     :style="componentStyle"
     :initial="{ backgroundPosition: '100% center' }"
@@ -72,5 +66,5 @@ const MotionComponent = computed(() => {
     }"
   >
     <slot />
-  </component>
+  </Motion>
 </template>

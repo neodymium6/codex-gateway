@@ -115,7 +115,9 @@ test("fans out a real remote app-server thread to multiple browser clients acros
   const steerMessage = await waitForRealtimeClientMessage(page, "turn.steer", steerMessageOffset);
   expect(steerMessage.threadId).toBe(threadId);
   expect(steerMessage.text).toContain(steerMarker);
-  await expect(page.getByTestId("chat-scroll-area").getByText(steerMarker)).toBeVisible({
+  await expect(
+    page.getByTestId("chat-scroll-area").getByText(`追加要求：${steerMarker}`, { exact: true }),
+  ).toBeVisible({
     timeout: 30_000,
   });
   const processToggle = firstIntermediateStepsToggle(page);
@@ -162,7 +164,7 @@ test("fans out a real remote app-server thread to multiple browser clients acros
   await firstIntermediateStepsToggle(page).click();
   await revealVirtualizedChatLocator(
     page,
-    page.getByTestId("chat-scroll-area").getByText(steerMarker),
+    page.getByTestId("chat-scroll-area").getByText(steerMarker, { exact: true }),
   );
   await reloadApp(page);
   await revealVirtualizedChatLocator(page, firstIntermediateStepsToggle(page));
@@ -170,7 +172,7 @@ test("fans out a real remote app-server thread to multiple browser clients acros
   await firstIntermediateStepsToggle(page).click();
   await revealVirtualizedChatLocator(
     page,
-    page.getByTestId("chat-scroll-area").getByText(steerMarker),
+    page.getByTestId("chat-scroll-area").getByText(steerMarker, { exact: true }),
   );
 
   const backgroundThreadId = await remoteWorkspace.startThread(project.id);

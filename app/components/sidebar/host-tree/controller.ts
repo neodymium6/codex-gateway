@@ -1,6 +1,7 @@
 import type { InjectionKey, Ref } from "vue";
 import type { ThreadRuntimeStatus } from "@/stores/gateway/types";
 import type { HostRecord, ProjectRecord, SidebarThread } from "../sidebar-types";
+import type { LongPressContextMenuHandlers } from "@/composables/interactions/useLongPressContextMenu";
 
 export interface HostTreeController {
   hosts: HostRecord[];
@@ -14,7 +15,7 @@ export interface HostTreeController {
   selectedProjectId: number | null;
   selectedThreadId: string | null;
   hostConnectionStatuses: Record<number, { status: string; message?: string | null }>;
-  longPressHandlers?: Record<string, unknown>;
+  longPressHandlers?: LongPressContextMenuHandlers;
   selectHost: (hostId: number) => void;
   addProject: (host: HostRecord) => void;
   deleteHost: (hostId: number) => void;

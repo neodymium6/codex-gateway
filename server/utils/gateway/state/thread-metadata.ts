@@ -1,23 +1,23 @@
-import { gatewayMemoryState, toTimestamp } from "./memory";
+import { currentGatewayMemoryState, toTimestamp } from "./memory";
 import { parentThreadIdFromMetadata, subAgentThreadStore } from "./sub-agent-threads";
 import type { AppServerThread } from "~~/shared/types";
 
 export const threadMetadataStore = {
   pruneToHosts(hostIds: Set<number>) {
-    gatewayMemoryState.threadMetadata = gatewayMemoryState.threadMetadata.filter((thread) =>
-      hostIds.has(thread.hostId),
+    currentGatewayMemoryState().threadMetadata = currentGatewayMemoryState().threadMetadata.filter(
+      (thread) => hostIds.has(thread.hostId),
     );
   },
 
   deleteForHost(hostId: number) {
-    gatewayMemoryState.threadMetadata = gatewayMemoryState.threadMetadata.filter(
+    currentGatewayMemoryState().threadMetadata = currentGatewayMemoryState().threadMetadata.filter(
       (thread) => thread.hostId !== hostId,
     );
   },
 
   get(hostId: number, threadId: string) {
     return (
-      gatewayMemoryState.threadMetadata.find(
+      currentGatewayMemoryState().threadMetadata.find(
         (thread) => thread.hostId === hostId && thread.threadId === threadId,
       ) ?? null
     );
@@ -42,15 +42,15 @@ export const threadMetadataStore = {
       recencyAt: toTimestamp(thread.recencyAt ?? thread.updatedAt) ?? timestamp,
       updatedAt: toTimestamp(thread.updatedAt) ?? timestamp,
     };
-    const index = gatewayMemoryState.threadMetadata.findIndex(
+    const index = currentGatewayMemoryState().threadMetadata.findIndex(
       (item) => item.hostId === hostId && item.threadId === threadId,
     );
     if (index >= 0) {
-      const existing = gatewayMemoryState.threadMetadata[index];
+      const existing = currentGatewayMemoryState().threadMetadata[index];
       if (existing === undefined) {
         return;
       }
-      gatewayMemoryState.threadMetadata[index] = {
+      currentGatewayMemoryState().threadMetadata[index] = {
         ...existing,
         ...metadata,
         projectId: projectId ?? existing.projectId,
@@ -64,13 +64,13 @@ export const threadMetadataStore = {
         status: metadata.status,
       };
     } else {
-      gatewayMemoryState.threadMetadata.push(metadata);
+      currentGatewayMemoryState().threadMetadata.push(metadata);
     }
   },
 
   list(hostId: number, options: { projectId?: number | null; cwd?: string | null } = {}) {
-    return gatewayMemoryState.threadMetadata
-      .filter((thread) => {
+    return currentGatewayMemoryState()
+      .threadMetadata.filter((thread) => {
         if (thread.hostId !== hostId) {
           return false;
         }

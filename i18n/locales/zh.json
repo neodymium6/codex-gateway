@@ -219,6 +219,8 @@
     "popupBlocked": "弹出窗口被拦截",
     "popupBlockedDescription": "请允许 Codex Gateway 打开弹出窗口后重试。",
     "closeTerminal": "关闭终端",
+    "closeTerminalFailed": "关闭终端失败",
+    "closeBrowserPreviewFailed": "关闭网页预览失败",
     "terminalExited": "终端已退出",
     "pinThread": "置顶会话",
     "unpinThread": "取消置顶",

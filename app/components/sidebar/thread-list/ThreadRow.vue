@@ -14,6 +14,7 @@ import { selectedRowClass } from "../sidebar-utils";
 import SidebarRowLabel from "../SidebarRowLabel.vue";
 import ThreadStatusIndicator from "./ThreadStatusIndicator.vue";
 import type { SidebarThreadRow } from "../sidebar-types";
+import type { LongPressContextMenuHandlers } from "@/composables/interactions/useLongPressContextMenu";
 
 const props = defineProps<{
   thread: SidebarThreadRow;
@@ -24,7 +25,7 @@ const props = defineProps<{
   subtitle?: string;
   pinLabel: string;
   showPinnedIcon?: boolean;
-  longPressHandlers?: Record<string, unknown>;
+  longPressHandlers?: LongPressContextMenuHandlers;
 }>();
 
 const emit = defineEmits<{

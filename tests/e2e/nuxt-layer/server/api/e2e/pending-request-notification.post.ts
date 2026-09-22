@@ -3,7 +3,7 @@ import { codexProviderAdapter } from "../../../../../../server/utils/gateway/age
 import { dispatchThreadRuntimeNotification } from "../../../../../../server/utils/gateway/notifications/thread-notification-dispatcher";
 import { defineGatewayEventHandler } from "../../../../../../server/utils/gateway/http/errors";
 import { pendingServerRequests } from "../../../../../../server/utils/gateway/runtime/pending-server-requests";
-import { gatewayMemoryState } from "../../../../../../server/utils/gateway/state/memory";
+import { currentGatewayMemoryState } from "../../../../../../server/utils/gateway/state/memory";
 
 export default defineGatewayEventHandler(async () => {
   const hostId = 1;
@@ -22,7 +22,7 @@ export default defineGatewayEventHandler(async () => {
     },
   };
   pendingServerRequests.track(hostId, threadId, request);
-  const before = new Set(gatewayMemoryState.publishedNotificationKeys);
+  const before = new Set(currentGatewayMemoryState().publishedNotificationKeys);
   const mapped = codexProviderAdapter.mapNotification({
     method: request.method,
     params: request.params,
@@ -47,6 +47,8 @@ export default defineGatewayEventHandler(async () => {
   pendingServerRequests.resolve(hostId, threadId, requestId);
   await new Promise((resolve) => setTimeout(resolve, 75));
   return {
-    publishedKeys: gatewayMemoryState.publishedNotificationKeys.filter((key) => !before.has(key)),
+    publishedKeys: currentGatewayMemoryState().publishedNotificationKeys.filter(
+      (key) => !before.has(key),
+    ),
   };
 });

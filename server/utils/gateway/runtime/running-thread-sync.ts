@@ -46,6 +46,7 @@ export async function refreshRunningThreadsForHost({
           {
             host,
             client,
+            providerId: "codex",
             hasController: (threadId) => threadBroker.hasController(host.id, threadId),
           },
           candidate.threadId,

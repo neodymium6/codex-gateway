@@ -19,12 +19,14 @@ export type ThreadStartedMessage = Extract<
   { type: "thread.started" }
 >;
 
-export function requestActivateThreadSnapshot(input: {
+export interface ThreadSnapshotActivationInput {
   hostId: number;
   projectId: number | null;
   threadId: string;
   limit?: number;
-}) {
+}
+
+export function requestActivateThreadSnapshot(input: ThreadSnapshotActivationInput) {
   return useGatewayRealtimeStore().request(
     (requestId) => ({
       type: "thread.activate",

@@ -25,10 +25,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mdit/plugin-katex": "1.1.0",
+    "@mdit/plugin-katex": "1.1.1",
     "@open-file-viewer/core": "0.1.43",
-    "katex": "0.18.4",
-    "markdown-it": "^15.0.1",
+    "katex": "0.18.7",
+    "markdown-it": "^15.0.2",
     "pdfjs-dist": "6.2.108"
   },
   "devDependencies": {
@@ -37,13 +37,13 @@
     "@shikijs/langs": "4.4.3",
     "@shikijs/themes": "4.4.3",
     "@shikijs/types": "4.4.3",
-    "@types/node": "^26.4.0",
-    "oxfmt": "0.65.0",
+    "@types/node": "^26.6.2",
+    "oxfmt": "0.68.0",
     "rimraf": "^6.1.3",
-    "rolldown": "1.2.6",
+    "rolldown": "1.2.9",
     "shiki": "4.4.3",
     "shiki-codegen": "4.4.3",
     "typescript": "^6.0.3",
-    "vite": "8.2.2"
+    "vite": "8.3.0"
   }
 }
