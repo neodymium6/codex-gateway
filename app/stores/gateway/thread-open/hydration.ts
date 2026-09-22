@@ -14,6 +14,8 @@ export function applyOpenedThreadResult(threadId: string, result: ThreadOpenResu
   const gateway = useGatewayCatalogStore();
   const navigation = useGatewayNavigationStore();
   const views = useGatewayThreadViewStore();
+  const previousAppliedEventId = views.appliedEventId;
+  const hadExistingHistory = views.history !== null;
   views.currentThread = result.thread;
   views.setHistory(result.history);
   if (result.projectId !== null && result.projectId !== undefined) {
@@ -29,6 +31,7 @@ export function applyOpenedThreadResult(threadId: string, result: ThreadOpenResu
   if (result.project !== null && result.project !== undefined)
     gateway.mergeProjects([result.project]);
   applyCommonThreadResult(threadId, result, result.lastEventId);
+  views.appliedEventId = hadExistingHistory ? (previousAppliedEventId ?? 0) : result.lastEventId;
   views.applyLiveEvents(result.recentEvents);
   syncRuntimeStatusFromResult(threadId, result, {
     thread: views.currentThread,
@@ -41,6 +44,8 @@ export function applyThreadSnapshotResult(threadId: string, result: ThreadSnapsh
   const gateway = useGatewayCatalogStore();
   const navigation = useGatewayNavigationStore();
   const views = useGatewayThreadViewStore();
+  const previousAppliedEventId = views.appliedEventId;
+  const hadExistingHistory = views.history !== null;
   views.currentThread = result.thread;
   views.setHistory(result.history);
   if (result.projectId !== null && result.projectId !== undefined) {
@@ -50,6 +55,7 @@ export function applyThreadSnapshotResult(threadId: string, result: ThreadSnapsh
   if (result.project !== null && result.project !== undefined)
     gateway.mergeProjects([result.project]);
   applyCommonThreadResult(threadId, result, result.lastEventId);
+  views.appliedEventId = hadExistingHistory ? (previousAppliedEventId ?? 0) : result.lastEventId;
   syncRuntimeStatusFromResult(threadId, result, {
     thread: views.currentThread,
     history: views.history,
@@ -63,6 +69,7 @@ export function applyStartedThreadResult(result: ThreadOpenResult) {
   const threadId = result.thread.id;
   views.currentThread = result.thread;
   views.setHistory(result.history);
+  views.appliedEventId = result.lastEventId;
   navigation.selectedThreadId = threadId;
   applyCommonThreadResult(threadId, result, result.lastEventId);
   return threadId;

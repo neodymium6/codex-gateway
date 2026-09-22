@@ -27,6 +27,7 @@ export const useGatewayThreadViewStore = defineStore("gateway-thread-view", () =
   const olderTurnsCursor = ref<string | null>(null);
   const newerTurnsCursor = ref<string | null>(null);
   const lastEventId = ref(0);
+  const appliedEventId = ref(0);
   const eventEpoch = ref("");
   const scrollToLatestToken = ref(0);
   const liveEventActions = createThreadLiveEventActions();
@@ -71,6 +72,7 @@ export const useGatewayThreadViewStore = defineStore("gateway-thread-view", () =
     olderTurnsCursor.value = null;
     newerTurnsCursor.value = null;
     lastEventId.value = 0;
+    appliedEventId.value = 0;
     eventEpoch.value = "";
   }
 
@@ -96,6 +98,7 @@ export const useGatewayThreadViewStore = defineStore("gateway-thread-view", () =
     olderTurnsCursor,
     newerTurnsCursor,
     lastEventId,
+    appliedEventId,
     eventEpoch,
     scrollToLatestToken,
     visibleSubAgentPanels,

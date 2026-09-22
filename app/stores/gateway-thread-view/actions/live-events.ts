@@ -2,7 +2,10 @@ import type { GatewayEvent } from "~~/shared/types";
 import { useGatewayNavigationStore } from "@/stores/gateway-navigation";
 import { useGatewayThreadViewStore } from "@/stores/gateway-thread-view";
 import { useAuthStore } from "@/stores/auth";
-import { appendEventsToThreadView } from "@/stores/gateway/thread-open/thread-view-cache";
+import {
+  appendEventsToThreadView,
+  markThreadEventsApplied,
+} from "@/stores/gateway/thread-open/thread-view-cache";
 import { pinnedKey } from "@/stores/gateway/thread-utils/identity";
 import { gatewayDomainEvents } from "@/stores/gateway/domain-events";
 import { useEventListener, useTimeoutFn } from "@vueuse/core";
@@ -30,6 +33,14 @@ export function createThreadLiveEventActions() {
     const sessionEpoch = useAuthStore().sessionEpoch;
     if (queuedSessionEpoch !== null && queuedSessionEpoch !== sessionEpoch) resetLiveEvents();
     queuedSessionEpoch = sessionEpoch;
+    // User messages must be reduced immediately. They are low-volume transcript rows, and
+    // delaying them behind a snapshot or a frame-sized delta batch can make another page appear
+    // to lose the message until an intermediate section is opened.
+    if (isCanonicalUserMessage(event)) {
+      flushQueuedEvents();
+      applyImmediateThreadEvent(event);
+      return;
+    }
     pendingEvents.push(event);
     const key = pinnedKey(event.hostId, event.threadId);
     pendingLastEventIds.set(key, Math.max(pendingLastEventIds.get(key) ?? 0, event.id));
@@ -72,7 +83,9 @@ export function createThreadLiveEventActions() {
         first.hostId === navigation.selectedHostId &&
         first.threadId === navigation.selectedThreadId;
       if (selected) {
-        const fresh = threadEvents.filter((event) => event.id > views.lastEventId);
+        const fresh = threadEvents.filter(
+          (event) => event.id > (views.appliedEventId ?? views.lastEventId),
+        );
         if (fresh.length) {
           views.events = [...views.events, ...fresh].slice(-500);
           views.lastEventId = fresh.at(-1)!.id;
@@ -84,6 +97,39 @@ export function createThreadLiveEventActions() {
       // committed once per thread. Otherwise one animation frame still copies the same timeline
       // and view cache once for every token-sized delta.
       gatewayDomainEvents.emit("history-events-project", { events: threadEvents });
+      if (selected) {
+        views.appliedEventId = Math.max(
+          views.appliedEventId ?? views.lastEventId,
+          ...threadEvents.map((event) => event.id),
+        );
+      } else {
+        markThreadEventsApplied(threadEvents);
+      }
+    }
+  }
+
+  function applyImmediateThreadEvent(event: GatewayEvent) {
+    const navigation = useGatewayNavigationStore();
+    const views = useGatewayThreadViewStore();
+    const selected =
+      event.hostId === navigation.selectedHostId && event.threadId === navigation.selectedThreadId;
+    const cachedView = views.threadViews[pinnedKey(event.hostId, event.threadId)];
+    const appliedEventId = selected
+      ? (views.appliedEventId ?? views.lastEventId)
+      : (cachedView?.appliedEventId ?? cachedView?.lastEventId ?? 0);
+    if (event.id <= appliedEventId) return;
+
+    if (selected) {
+      views.events = [...views.events, event].slice(-500);
+      views.lastEventId = Math.max(views.lastEventId, event.id);
+    } else {
+      appendEventsToThreadView([event]);
+    }
+    gatewayDomainEvents.emit("history-events-project", { events: [event] });
+    if (selected) {
+      views.appliedEventId = Math.max(views.appliedEventId ?? 0, event.id);
+    } else {
+      markThreadEventsApplied([event]);
     }
   }
 
@@ -99,9 +145,13 @@ export function createThreadLiveEventActions() {
   return {
     applyLiveEvent(event: GatewayEvent) {
       gatewayDomainEvents.emit("history-events-project", { events: [event] });
+      markThreadEventsApplied([event]);
     },
     applyLiveEvents(events: GatewayEvent[]) {
-      if (events.length) gatewayDomainEvents.emit("history-events-project", { events });
+      if (events.length) {
+        gatewayDomainEvents.emit("history-events-project", { events });
+        markThreadEventsApplied(events);
+      }
     },
     queueThreadEvent,
     resetLiveEvents,
@@ -110,9 +160,15 @@ export function createThreadLiveEventActions() {
       const views = useGatewayThreadViewStore();
       const applied =
         hostId === navigation.selectedHostId && threadId === navigation.selectedThreadId
-          ? views.lastEventId
-          : (views.threadViews[pinnedKey(hostId, threadId)]?.lastEventId ?? 0);
+          ? (views.appliedEventId ?? views.lastEventId)
+          : (views.threadViews[pinnedKey(hostId, threadId)]?.appliedEventId ??
+            views.threadViews[pinnedKey(hostId, threadId)]?.lastEventId ??
+            0);
       return Math.max(applied, pendingLastEventIds.get(pinnedKey(hostId, threadId)) ?? 0);
     },
   };
+}
+
+function isCanonicalUserMessage(event: GatewayEvent) {
+  return event.event.type === "timeline.item.upsert" && event.event.item.type === "userMessage";
 }
