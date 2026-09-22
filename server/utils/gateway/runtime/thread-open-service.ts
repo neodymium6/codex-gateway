@@ -21,6 +21,7 @@ import { pageCursorState, pageToFullHistory } from "./thread-history-pages";
 import { runtimeLog } from "./runtime-log";
 import { threadRuntimeEvents } from "./thread-runtime-events";
 import type { ThreadOpenSnapshot, TurnsPage } from "./types";
+import { preserveUserMessagesInOpenSnapshot } from "./open-snapshot-events";
 import { currentGatewayUserId } from "../state/memory";
 import { parseThreadReadResult, parseThreadStartResult } from "~~/shared/runtime/app-server";
 import { gatewayThreadFromAppServer } from "../protocol/gateway-thread";
@@ -304,13 +305,17 @@ export class ThreadOpenService {
     const threadId = thread.id;
     const resolvedProjectId = resolveProjectId(host.id, projectId, thread.cwd);
     threadMetadataStore.record(host.id, resolvedProjectId, thread);
+    const previousSnapshot = threadSnapshotStore.get(host.id, threadId);
 
-    const recentEvents = gatewayEventStore.list(host.id, threadId, 0, 200);
+    // The per-thread store retains at most 500 events. Reapply the complete retained window so a
+    // summary refresh cannot erase an accepted steer merely because it is older than the first
+    // 200 high-frequency output deltas.
+    const recentEvents = gatewayEventStore.list(host.id, threadId, 0, 500);
     // thread/resume does not expose collaborationMode. Preserve the latest complete official
     // thread/settings/updated projection when one exists; otherwise the resume DTO still supplies
     // model and effort for threads that have never changed settings during this Gateway lifetime.
     const effectiveThreadSettings = latestThreadSettingsFromEvents(recentEvents) ?? threadSettings;
-    const snapshot = {
+    const baseSnapshot = {
       thread,
       history: projectThreadTimelineHistory(pageToFullHistory(thread, initialTurnsPage)),
       projectId: resolvedProjectId,
@@ -318,6 +323,11 @@ export class ThreadOpenService {
       threadSettings: effectiveThreadSettings,
       tokenUsage: latestTokenUsageFromEvents(recentEvents),
     };
+    const snapshot = preserveUserMessagesInOpenSnapshot(
+      baseSnapshot,
+      previousSnapshot,
+      recentEvents,
+    );
     // During browser activation the controller is created before the cold snapshot exists. Route
     // the write through it so sub-agent classification and active-main-thread handoff state are
     // initialized together with the cache. Non-browser reconciliation has no activation controller
