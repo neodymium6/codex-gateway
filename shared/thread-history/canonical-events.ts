@@ -1,6 +1,7 @@
 import type { AgentEvent } from "../agent/events";
 import type { ThreadHistorySeed, ThreadHistoryState, ThreadPlanStep } from "./types";
 import {
+  addReasoningSummaryPart,
   appendAgentDelta,
   appendCommandOutputDelta,
   appendPlanDelta,
@@ -47,6 +48,8 @@ export function applyCanonicalEventToHistory(
       return mergeItemIntoLatestTurn(history, currentThread, threadId, event.item);
     case "timeline.item.delta":
       return applyDelta(history, currentThread, threadId, event);
+    case "timeline.item.reasoningSummaryPartAdded":
+      return addReasoningSummaryPart(history, currentThread, threadId, event);
     case "serverRequest.requested":
       return mergeItemIntoLatestTurn(history, currentThread, threadId, event.item);
     case "serverRequest.resolved":

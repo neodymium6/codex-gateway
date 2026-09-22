@@ -61,6 +61,41 @@ export function appendReasoningSummaryDelta(
   });
 }
 
+export function addReasoningSummaryPart(
+  history: ThreadHistoryState | null,
+  currentThread: ThreadHistorySeed | null,
+  threadId: string,
+  params: { itemId: string; turnId: string; summaryIndex: number },
+): ThreadHistoryState {
+  return updateItemInTurnById(
+    history,
+    currentThread,
+    threadId,
+    params.turnId,
+    params.itemId,
+    () => ({
+      type: "reasoning",
+      id: params.itemId,
+      turnId: params.turnId,
+      status: "inProgress",
+      summary: summaryWithPart([], params.summaryIndex),
+    }),
+    (item) => ({
+      ...item,
+      summary: summaryWithPart(
+        Array.isArray(item.summary) ? item.summary : [],
+        params.summaryIndex,
+      ),
+    }),
+  );
+}
+
+function summaryWithPart(summary: unknown[], summaryIndex: number) {
+  const next = [...summary];
+  while (next.length <= summaryIndex) next.push("");
+  return next;
+}
+
 export function appendReasoningTextDelta(
   history: ThreadHistoryState | null,
   currentThread: ThreadHistorySeed | null,

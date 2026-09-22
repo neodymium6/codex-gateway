@@ -91,6 +91,7 @@ function applySnapshotReducer(snapshot: ThreadOpenSnapshot, event: AgentEvent) {
     case "thread.attachment.updated":
     case "thread.realtime.error":
     case "thread.started":
+    case "timeline.item.reasoningSummaryPartAdded":
     case "timeline.item.delta":
     case "timeline.item.upsert":
     case "turn.completed":

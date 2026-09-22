@@ -1,4 +1,4 @@
-import type { AppServerThread, HostRecord } from "~~/shared/types";
+import type { AppServerThread, HostRecord, ThreadTimelineItem } from "~~/shared/types";
 import { parseThreadItemsPage, parseTurnsPage } from "~~/shared/runtime/app-server";
 import {
   asThreadTimelineItem,
@@ -9,6 +9,7 @@ import type { ControllerRegistry } from "./controller-registry";
 import { pageCursorState, pageToFullHistory } from "./thread-history-pages";
 import { DEFAULT_TURN_PAGE_LIMIT, type TurnsPage } from "./types";
 import { readLegacyTurnItems } from "./legacy-turn-items";
+import type { RecoveredTurnTail } from "./thread-tail-recovery";
 
 export interface ThreadTurnsListInput {
   cursor?: string | null;
@@ -98,6 +99,43 @@ export class ThreadHistoryReader {
       }),
       nextCursor: page.nextCursor,
       backwardsCursor: page.backwardsCursor,
+    };
+  }
+
+  async recoverLatestTurnTail(
+    host: HostRecord,
+    threadId: string,
+    turnId: string,
+  ): Promise<RecoveredTurnTail> {
+    const client = await this.registry.getHostClient(host);
+    // Match Paseo's reconnect model: install one bounded authoritative latest tail, then leave
+    // older history on its existing user-driven pagination path. Scanning the complete Turn here
+    // would make revisiting one long conversation replay every tool item and recreate the memory
+    // problem that paginated App Server history is intended to avoid.
+    const page: ReturnType<typeof parseThreadItemsPage> = await client.request(
+      "thread/items/list",
+      {
+        threadId,
+        turnId,
+        cursor: null,
+        limit: 100,
+        sortDirection: "desc",
+      },
+      120_000,
+      parseThreadItemsPage,
+    );
+    const tailItems: ThreadTimelineItem[] = page.data
+      .flatMap((entry) => {
+        const item = asThreadTimelineItem({ ...entry.item, turnId: entry.turnId });
+        return item === null ? [] : [item];
+      })
+      .reverse();
+
+    return {
+      turnId,
+      olderUserItems: [],
+      tailItems,
+      complete: page.nextCursor === null,
     };
   }
 

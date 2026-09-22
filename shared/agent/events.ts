@@ -48,6 +48,12 @@ export type AgentEvent =
       summaryIndex?: number;
       contentIndex?: number;
     }
+  | {
+      type: "timeline.item.reasoningSummaryPartAdded";
+      itemId: string;
+      turnId: string;
+      summaryIndex: number;
+    }
 
   // ── Thread state ────────────────────────────────────────────────
   | { type: "thread.status.changed"; status: unknown }
@@ -161,6 +167,13 @@ const timelineItemDeltaSchema = z.object({
   contentIndex: z.number().optional(),
 });
 
+const timelineItemReasoningSummaryPartAddedSchema = z.object({
+  type: z.literal("timeline.item.reasoningSummaryPartAdded"),
+  itemId: z.string(),
+  turnId: z.string(),
+  summaryIndex: z.number().int().nonnegative(),
+});
+
 const threadStatusChangedSchema = z.object({
   type: z.literal("thread.status.changed"),
   status: z.unknown(),
@@ -272,6 +285,7 @@ export const agentEventSchema = z.discriminatedUnion("type", [
   turnPlanUpdatedSchema,
   timelineItemUpsertSchema,
   timelineItemDeltaSchema,
+  timelineItemReasoningSummaryPartAddedSchema,
   threadStatusChangedSchema,
   threadSettingsUpdatedSchema,
   threadUsageUpdatedSchema,
