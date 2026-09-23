@@ -130,7 +130,7 @@ export class ThreadOpenService {
         projectId,
         project: projectId === null ? null : projectStore.get(projectId),
         turnsPage,
-        recentEvents: snapshotRecentEvents(),
+        recentEvents: snapshotRecentEvents(host.id, threadId),
       },
     };
   }
@@ -260,7 +260,7 @@ export class ThreadOpenService {
       turnsPage: snapshot.turnsPage,
       threadSettings: snapshot.threadSettings,
       tokenUsage: latestTokenUsageFromEvents(recentEvents) ?? snapshot.tokenUsage,
-      recentEvents: snapshotRecentEvents(),
+      recentEvents: snapshotRecentEvents(host.id, threadId),
     };
   }
 
@@ -286,7 +286,7 @@ export class ThreadOpenService {
       turnsPage: snapshot.turnsPage,
       threadSettings: snapshot.threadSettings,
       tokenUsage: latestTokenUsageFromEvents(recentEvents) ?? snapshot.tokenUsage,
-      recentEvents: snapshotRecentEvents(),
+      recentEvents: snapshotRecentEvents(host.id, threadId),
     };
   }
 
@@ -415,11 +415,16 @@ function resolveProjectId(hostId: number, projectId: number | null, cwd: unknown
   return projectStore.ensureForPath(hostId, cwd).id;
 }
 
-function snapshotRecentEvents() {
-  // Thread snapshots already include materialized history plus lastEventId. Re-sending recent
-  // app-server events here duplicates large cumulative diff/output payloads and can push mobile
-  // browsers over their renderer memory limit before the realtime subscription starts. New live
-  // events are replayed through thread.event after lastEventId, so the snapshot path intentionally
-  // keeps this legacy field empty while runtime status/token usage are computed server-side above.
-  return [];
+function snapshotRecentEvents(hostId: number, threadId: string) {
+  // Summary snapshots intentionally omit later user messages. Replay only those small canonical
+  // rows here so a route switch cannot advance the client cursor past a message that the snapshot
+  // does not contain. Command output, reasoning, diffs, and token deltas remain on the live stream
+  // or explicit item pagination; including those payloads here would recreate the mobile memory
+  // pressure this snapshot path was designed to avoid.
+  return gatewayEventStore
+    .list(hostId, threadId, 0, 500)
+    .filter(
+      (event) =>
+        event.event.type === "timeline.item.upsert" && event.event.item.type === "userMessage",
+    );
 }
