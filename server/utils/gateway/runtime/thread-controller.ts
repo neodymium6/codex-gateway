@@ -10,13 +10,12 @@ import {
 } from "~~/shared/thread-runtime-status";
 import { recordFromUnknown } from "~~/shared/utils/records";
 import { bindGatewayUser } from "../state/memory";
-import { gatewayEventStore } from "../state/gateway-events";
 import { threadSnapshotStore } from "../state/thread-snapshots";
 import { threadRuntimeEvents } from "./thread-runtime-events";
 import type { ThreadOpenSnapshot } from "./types";
 import { createThreadNotificationResolvers } from "./notification-rpc-resolvers";
 import type { AgentRpcClient, ProviderAdapter } from "../agent/provider-adapter";
-import { extractThreadSettings, latestThreadSettingsFromEvents } from "../protocol/thread-payload";
+import { extractThreadSettings } from "../protocol/thread-payload";
 
 export class ThreadController {
   readonly client: AgentRpcClient;
@@ -266,24 +265,13 @@ export class ThreadController {
     );
     this.subscribed = true;
     this.resumeSettings = extractThreadSettings(resumed);
-    const latestSettings = latestThreadSettingsFromEvents(
-      gatewayEventStore.list(this.host.id, this.threadId, 0, 200),
-    );
-    if (latestSettings?.collaborationMode !== undefined) {
-      this.resumeSettings = {
-        ...this.resumeSettings,
-        collaborationMode: latestSettings.collaborationMode,
-      };
-    }
     const snapshot = this.getOpenSnapshot();
     if (snapshot !== null) {
       this.setOpenSnapshot({ ...snapshot, threadSettings: this.resumeSettings });
     }
-    // thread/resume is authoritative for model, effort, and approval policy, but it does not carry
-    // collaborationMode. Reuse the newest real settings notification already recorded for this
-    // thread instead of letting an older open snapshot overwrite a remote Plan/Default change.
-    // Do not synthesize a settings notification: the app-server event remains the single source of
-    // truth for fields absent from the resume response.
+    // The 0.156.1 ThreadResumeResponse carries the persisted collaboration mode at its top level.
+    // Keep resumeSettings as that response projection; historical notifications are not a second
+    // recovery source and cannot overwrite a mode restored by the protocol.
     return resumed;
   }
 }

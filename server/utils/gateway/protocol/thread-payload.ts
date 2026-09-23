@@ -1,11 +1,13 @@
 import type {
   ApprovalPolicy,
-  GatewayEvent,
   ThreadCollaborationMode,
   ThreadSettingsState,
   ThreadTokenUsageState,
 } from "~~/shared/types";
-import { threadSettingsFromAppServer } from "~~/shared/runtime/app-server";
+import {
+  threadCollaborationModeFromAppServer,
+  threadSettingsFromAppServer,
+} from "~~/shared/runtime/app-server";
 import { normalizeTokenUsage } from "~~/shared/token-usage";
 import { recordFromUnknown } from "~~/shared/utils/records";
 import type { TurnStartInput } from "../runtime/types";
@@ -73,7 +75,17 @@ export function extractThreadSettings(source: unknown): ThreadSettingsState {
   const sourceRecord = recordFromUnknown(source);
   const threadSettings = recordFromUnknown(sourceRecord?.threadSettings);
   const currentProtocolSettings = threadSettingsFromAppServer(threadSettings);
-  if (currentProtocolSettings !== null) return currentProtocolSettings;
+  // Since Codex 0.156.1, thread/resume exposes collaborationMode at the response root. It is the
+  // authoritative persisted mode; history notifications describe runtime changes and must not be
+  // replayed to reconstruct a resume response. Keep the nested field only for other protocol DTOs.
+  const resumedCollaborationMode = threadCollaborationModeFromAppServer(
+    sourceRecord?.collaborationMode,
+  );
+  if (currentProtocolSettings !== null) {
+    return resumedCollaborationMode === null
+      ? currentProtocolSettings
+      : { ...currentProtocolSettings, collaborationMode: resumedCollaborationMode };
+  }
   const model = threadSettings?.model ?? sourceRecord?.model;
   const effort = threadSettings?.effort ?? sourceRecord?.reasoningEffort;
   return {
@@ -82,16 +94,8 @@ export function extractThreadSettings(source: unknown): ThreadSettingsState {
     approvalPolicy: normalizeApprovalPolicy(
       threadSettings?.approvalPolicy ?? sourceRecord?.approvalPolicy,
     ),
+    collaborationMode: resumedCollaborationMode,
   };
-}
-
-export function latestThreadSettingsFromEvents(events: GatewayEvent[]): ThreadSettingsState | null {
-  for (const event of [...events].sort((left, right) => right.id - left.id)) {
-    if (event.event.type !== "thread.settings.updated") continue;
-    const settings = threadSettingsFromAppServer(event.event.threadSettings);
-    if (settings !== null) return settings;
-  }
-  return null;
 }
 
 export function latestTokenUsageFromEvents(events: GatewayEvent[]): ThreadTokenUsageState | null {

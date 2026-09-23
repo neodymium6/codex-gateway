@@ -6,11 +6,7 @@ import {
   runtimeStatusFromSnapshotState,
   runtimeStatusFromThreadState,
 } from "~~/shared/thread-runtime-status";
-import {
-  extractThreadSettings,
-  latestThreadSettingsFromEvents,
-  latestTokenUsageFromEvents,
-} from "../protocol/thread-payload";
+import { extractThreadSettings, latestTokenUsageFromEvents } from "../protocol/thread-payload";
 import { gatewayEventStore } from "../state/gateway-events";
 import { projectStore } from "../state/projects";
 import { threadMetadataStore } from "../state/thread-metadata";
@@ -360,16 +356,15 @@ export class ThreadOpenService {
     // summary refresh cannot erase an accepted steer merely because it is older than the first
     // 200 high-frequency output deltas.
     const recentEvents = gatewayEventStore.list(host.id, threadId, 0, 500);
-    // thread/resume does not expose collaborationMode. Preserve the latest complete official
-    // thread/settings/updated projection when one exists; otherwise the resume DTO still supplies
-    // model and effort for threads that have never changed settings during this Gateway lifetime.
-    const effectiveThreadSettings = latestThreadSettingsFromEvents(recentEvents) ?? threadSettings;
     const baseSnapshot = {
       thread,
       history: projectThreadTimelineHistory(pageToFullHistory(thread, initialTurnsPage)),
       projectId: resolvedProjectId,
       turnsPage: pageCursorState(initialTurnsPage),
-      threadSettings: effectiveThreadSettings,
+      // For browser activation this value comes directly from thread/resume, including its
+      // top-level collaborationMode. Do not replace it with a historical settings event: the
+      // response is the protocol's persisted thread configuration.
+      threadSettings,
       tokenUsage: latestTokenUsageFromEvents(recentEvents),
     };
     const snapshot = preserveUserMessagesInOpenSnapshot(

@@ -21,7 +21,7 @@ export function gatewayThreadFixture(
     appServerProjectId: null,
     historyMode: "legacy",
     modelProvider: "e2e",
-    model: "gpt-5.6-luna",
+    model: "gpt-6-luna",
     reasoningEffort: "medium",
     createdAt: now,
     updatedAt: now,
