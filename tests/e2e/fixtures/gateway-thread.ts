@@ -29,7 +29,7 @@ export function gatewayThreadFixture(
     status: { type: "idle" },
     path: null,
     cwd: "/tmp/e2e",
-    cliVersion: "0.155.0",
+    cliVersion: "0.156.1",
     originator: "app-server",
     source: "appServer",
     canAcceptDirectInput: true,

@@ -206,17 +206,14 @@ test("starts the official managed daemon for an existing socket app-server", asy
 set -eu
 socket="\${CODEX_HOME:-$HOME/.codex}/app-server-control/app-server-control.sock"
 daemon_dir="\${CODEX_HOME:-$HOME/.codex}/app-server-daemon"
-rm -f "$daemon_dir"/app-server.pid "$daemon_dir"/app-server.pid.lock "$daemon_dir"/app-server.stderr.log "$daemon_dir"/loaded-threads.json
+rm -f "$daemon_dir"/app-server.pid "$daemon_dir"/app-server.pid.lock "$daemon_dir"/app-server.stderr.log
+rm -f "$daemon_dir"/daemon.pid "$daemon_dir"/daemon.pid.lock "$daemon_dir"/daemon.stderr.log
+rm -f "$daemon_dir"/daemon-updater.pid "$daemon_dir"/daemon-updater.pid.lock "$daemon_dir"/daemon-updater.stderr.log
+rm -f "$daemon_dir"/loaded-threads.json
 mkdir -p "$daemon_dir"
-# This is the same official daemon lifecycle command used by Gateway. The browser still drives
-# the scenario; the shell only provisions the real remote app-server process.
-nohup ${codexBin} app-server daemon bootstrap --remote-control >"$daemon_dir/e2e-app-server.log" 2>&1 </dev/null &
-for i in $(seq 1 100); do
-  if [ -S "$socket" ]; then
-    break
-  fi
-  sleep 0.1
-done
+# This is the same synchronous official daemon lifecycle command used by Gateway. The browser
+# still drives the scenario; the shell only provisions the real remote app-server process.
+${codexBin} app-server daemon bootstrap --remote-control >"$daemon_dir/e2e-app-server.log" 2>&1
 if [ ! -S "$socket" ]; then
   echo "socket was not created: $socket"
   ps -eo pid=,args= | grep 'codex app-server' || true
