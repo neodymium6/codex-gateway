@@ -56,6 +56,15 @@ export function applyThreadSnapshotResult(threadId: string, result: ThreadSnapsh
     gateway.mergeProjects([result.project]);
   applyCommonThreadResult(threadId, result, result.lastEventId);
   views.appliedEventId = hadExistingHistory ? (previousAppliedEventId ?? 0) : result.lastEventId;
+  if (hadExistingHistory) {
+    // A snapshot response carries the same bounded event tail as the initial open response. Apply
+    // that tail before the next WebSocket notification arrives; otherwise switching back can paint
+    // an older Agent message first and append its missing streamed text one frame later, moving the
+    // virtual list and interrupting bottom-follow. A fresh page already received the materialized
+    // history, so replaying its historical lifecycle events would incorrectly mark completed
+    // threads as recently running.
+    views.applyLiveEvents(result.recentEvents);
+  }
   syncRuntimeStatusFromResult(threadId, result, {
     thread: views.currentThread,
     history: views.history,

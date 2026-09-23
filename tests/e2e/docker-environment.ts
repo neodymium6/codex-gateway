@@ -47,7 +47,7 @@ export async function startDockerEnvironment() {
       firstNonEmptyString([process.env.E2E_REMOTE_PROJECT_PATH]) ?? "/workspace/codex-gateway",
     imagePath: "/home/codex/e2e-image.png",
     supportedCodexVersion: SUPPORTED_CODEX_VERSION,
-    testModel: firstNonEmptyString([process.env.E2E_CODEX_MODEL]) ?? "gpt-5.6-luna",
+    testModel: firstNonEmptyString([process.env.E2E_CODEX_MODEL]) ?? "gpt-6-luna",
     proxyUrl: null,
   };
   const environments: RemoteEnv[] = [

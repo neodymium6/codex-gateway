@@ -272,7 +272,7 @@ test("plan mode shows implementation actions for a second completed turn plan", 
   await seedGatewayThread(page, {
     threadId: "e2e-repeat-plan-thread",
     currentThread: { id: "e2e-repeat-plan-thread", name: "Repeat Plan" },
-    threadSettings: { model: "gpt-5.6-luna" },
+    threadSettings: { model: "gpt-6-luna" },
     history: {
       thread: {
         id: "e2e-repeat-plan-thread",

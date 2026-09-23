@@ -76,11 +76,11 @@ test("shows effort and compact context usage without mobile approval controls", 
     projectId: 1,
     threadId,
     currentThread: { id: threadId, name: "Mobile composer settings" },
-    threadSettings: { model: "gpt-5.6-luna", effort: "medium", approvalPolicy: "never" },
+    threadSettings: { model: "gpt-6-luna", effort: "medium", approvalPolicy: "never" },
     models: [
       {
-        id: "gpt-5.6-luna",
-        model: "gpt-5.6-luna",
+        id: "gpt-6-luna",
+        model: "gpt-6-luna",
         displayName: "GPT-5.6 Luna",
         supportedReasoningEfforts: [
           { reasoningEffort: "low" },
@@ -116,7 +116,7 @@ test("shows effort and compact context usage without mobile approval controls", 
   await modelSearch.click();
   await expect(modelSearch).toBeFocused();
   await modelSearch.fill("luna");
-  await expect(page.getByTestId("model-option-gpt-5.6-luna")).toBeVisible();
+  await expect(page.getByTestId("model-option-gpt-6-luna")).toBeVisible();
   await expect(page.getByTestId("model-option-gpt-5.6-sol")).toBeHidden();
   await modelSearch.fill("");
 

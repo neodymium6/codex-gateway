@@ -28,7 +28,7 @@ test("refreshes thread settings after a disconnected browser reconnects", async 
     hostName: `settings-reconnect-${Date.now()}`,
   });
   const threadId = await remoteWorkspace.startThread(project.id);
-  await expect(page.getByTestId("model-select")).toContainText("gpt-5.6-luna");
+  await expect(page.getByTestId("model-select")).toContainText("gpt-6-luna");
 
   const secondContext = await browser.newContext({
     storageState: await page.context().storageState(),
@@ -40,7 +40,7 @@ test("refreshes thread settings after a disconnected browser reconnects", async 
     await expect
       .poll(async () => currentSelectedThreadId(secondPage), { timeout: 30_000 })
       .toBe(threadId);
-    await expect(secondPage.getByTestId("model-select")).toContainText("gpt-5.6-luna");
+    await expect(secondPage.getByTestId("model-select")).toContainText("gpt-6-luna");
 
     await page.getByTestId("model-select").click();
     await page.getByTestId("model-option-gpt-5.6-sol").click();
