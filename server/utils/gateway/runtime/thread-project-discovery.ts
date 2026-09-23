@@ -5,6 +5,7 @@ import { projectStore } from "../state/projects";
 import { threadMetadataStore } from "../state/thread-metadata";
 import { threadBroker } from "./broker";
 import type { ThreadListPage } from "./thread-catalog";
+import { gatewayLog } from "../logging";
 
 export class ThreadProjectDiscoveryService {
   private readonly pending = new Map<string, Promise<void>>();
@@ -18,7 +19,7 @@ export class ThreadProjectDiscoveryService {
         const project = projectStore.ensureForPath(hostId, thread.cwd);
         threadMetadataStore.record(hostId, project.id, thread);
       } catch (error) {
-        console.warn("[gateway] failed to index thread project", {
+        gatewayLog("warn", "gateway", "failed to index thread project", {
           hostId,
           threadId: thread.id,
           cwd: thread.cwd,
@@ -71,7 +72,7 @@ export class ThreadProjectDiscoveryService {
     });
     const request = discover()
       .catch((error) => {
-        console.warn("[gateway] background thread project discovery failed", {
+        gatewayLog("warn", "gateway", "background thread project discovery failed", {
           hostId: host.id,
           hostName: host.name,
           error: error instanceof Error ? error.message : String(error),

@@ -18,6 +18,7 @@ import type { AppServerThread, GatewayThread, ProjectRecord } from "~~/shared/ty
 import type { HostWithSecret } from "../../utils/gateway/infra/ssh/ssh-types";
 import { trimmedOrNull } from "~~/shared/utils/strings";
 import { gatewayThreadFromAppServer } from "../../utils/gateway/protocol/gateway-thread";
+import { gatewayLog } from "../../utils/gateway/logging";
 
 export default defineGatewayEventHandler(async (event) => {
   const query = await getValidatedQuery(event, (body) => threadListSchema.parse(body));
@@ -93,7 +94,7 @@ async function inspectProjectAvailability(
     );
   } catch (error) {
     // Availability is advisory; an SFTP outage must not hide projects or fail thread listing.
-    console.warn("[gateway] project directory inspection failed", {
+    gatewayLog("warn", "gateway", "project directory inspection failed", {
       hostId: host.id,
       hostName: host.name,
       error: error instanceof Error ? error.message : String(error),

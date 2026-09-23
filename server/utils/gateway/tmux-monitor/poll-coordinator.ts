@@ -2,6 +2,7 @@ import pLimit from "p-limit";
 import { userStore } from "../auth/users";
 import { runWithGatewayUser } from "../state/memory";
 import { tmuxMonitorService } from "./monitor-service";
+import { gatewayLog } from "../logging";
 
 const HOST_POLL_CONCURRENCY = 3;
 
@@ -28,7 +29,7 @@ export class TmuxMonitorPollCoordinator {
               await tmuxMonitorService
                 .deliverPendingNotifications(host, group.pendingNotifications)
                 .catch((error) => {
-                  console.error("[gateway-tmux] pending notification delivery failed", {
+                  gatewayLog("error", "gateway-tmux", "pending notification delivery failed", {
                     userId: group.userId,
                     hostId: group.hostId,
                     hostName: host.name,
@@ -39,7 +40,7 @@ export class TmuxMonitorPollCoordinator {
               await tmuxMonitorService
                 .checkHost(group.userId, host, group.monitors)
                 .catch((error) => {
-                  console.error("[gateway-tmux] monitor poll failed", {
+                  gatewayLog("error", "gateway-tmux", "monitor poll failed", {
                     userId: group.userId,
                     hostId: group.hostId,
                     hostName: host.name,

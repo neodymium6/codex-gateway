@@ -4,6 +4,7 @@ import { threadMetadataStore } from "../state/thread-metadata";
 import { subAgentThreadStore } from "../state/sub-agent-threads";
 import type { ThreadMetadataResolver } from "../runtime/thread-runtime-events";
 import { recordFromUnknown } from "~~/shared/utils/records";
+import { gatewayLog } from "../logging";
 
 export async function shouldNotifyMainThread(
   event: GatewayEvent,
@@ -22,7 +23,7 @@ export async function shouldNotifyMainThread(
     threadMetadataStore.record(event.hostId, null, thread);
     return !isAppServerSubAgentThread(thread);
   } catch (error) {
-    console.error("[gateway] failed to inspect thread scope before notification", {
+    gatewayLog("error", "gateway", "failed to inspect thread scope before notification", {
       hostId: event.hostId,
       threadId: event.threadId,
       error: error instanceof Error ? error.message : String(error),

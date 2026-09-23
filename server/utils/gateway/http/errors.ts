@@ -16,6 +16,7 @@ import {
 } from "../state/memory";
 import { recordFromUnknown } from "~~/shared/utils/records";
 import { firstNonEmptyString } from "~~/shared/utils/strings";
+import { gatewayLog } from "../logging";
 
 export class CodexRpcError extends Error {
   constructor(
@@ -34,7 +35,7 @@ export function logGatewayApiError(
   details: Record<string, unknown>,
   error: unknown,
 ) {
-  console.error(`[gateway] ${scope} failed`, {
+  gatewayLog("error", "gateway", `${scope} failed`, {
     ...details,
     error: serializeError(error),
   });

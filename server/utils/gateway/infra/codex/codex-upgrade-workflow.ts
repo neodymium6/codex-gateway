@@ -3,13 +3,13 @@ import { hostLifecycleBus } from "../../state/host-events";
 import type { HostWithSecret, RemoteCodexVersionState } from "../ssh/ssh-types";
 import type { AppServerRuntimeProbe } from "./app-server-runtime-probe";
 import type { CodexUpgrader } from "./codex-upgrader";
-import { CodexUpgradeQueue } from "./codex-upgrade-queue";
+import { CodexUpgradeCoordinator } from "./codex-upgrade-queue";
 import type { CodexVersionChecker } from "./codex-version-checker";
 import { codexUpgradeLog } from "./codex-upgrade-log";
 import type { CodexUpgradeResources } from "./codex-upgrade-resources";
 
 export class CodexUpgradeWorkflow {
-  private readonly queue = new CodexUpgradeQueue();
+  private readonly coordinator = new CodexUpgradeCoordinator();
 
   constructor(
     private readonly runtime: AppServerRuntimeProbe,
@@ -172,16 +172,9 @@ export class CodexUpgradeWorkflow {
     host: HostWithSecret,
     work: (resources: CodexUpgradeResources, attempt: number) => Promise<T>,
   ) {
-    if (this.queue.busy) {
-      hostLifecycleBus.emit({
-        hostId: host.id,
-        status: "upgrading",
-        message: `${hostDisplayName(host)} 正在等待 Codex 升级队列`,
-      });
-    }
     const resources = this.upgrader.createResources(host);
     try {
-      return await this.queue.run(host, (attempt) => work(resources, attempt));
+      return await this.coordinator.run(host, (attempt) => work(resources, attempt));
     } finally {
       await resources.dispose();
     }

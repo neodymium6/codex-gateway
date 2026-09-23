@@ -28,8 +28,10 @@ export class MemoryHousekeepingService {
     const collect = exposedGarbageCollector();
     if (collect === null) {
       if (!this.warnedUnavailable) {
-        console.warn(
-          "[gateway-memory] periodic collection unavailable; start Node with --expose-gc",
+        gatewayLog(
+          "warn",
+          "gateway-memory",
+          "periodic collection unavailable; start Node with --expose-gc",
         );
         this.warnedUnavailable = true;
       }
@@ -38,7 +40,7 @@ export class MemoryHousekeepingService {
 
     collect();
     const after = process.memoryUsage();
-    console.info("[gateway-memory] periodic collection completed", {
+    gatewayLog("info", "gateway-memory", "periodic collection completed", {
       rssBeforeMiB: toMebibytes(before.rss),
       rssAfterMiB: toMebibytes(after.rss),
       heapBeforeMiB: toMebibytes(before.heapUsed),
@@ -59,3 +61,4 @@ function toMebibytes(bytes: number) {
 }
 
 export const memoryHousekeepingService = new MemoryHousekeepingService();
+import { gatewayLog } from "../../logging";

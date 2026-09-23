@@ -12,6 +12,7 @@ import { HostVerifyService } from "../host-verify-service";
 
 export class CodexRuntimeService {
   private readonly versionChecks = new Map<string, Promise<RemoteCodexVersionState>>();
+  private readonly failedVersionChecks = new Map<string, { error: unknown; retryAt: number }>();
   private readonly deferredUpgradeChecks = new Map<string, Promise<boolean>>();
   private readonly upgradeWorkflow: CodexUpgradeWorkflow;
   private readonly appServerRuntime: AppServerRuntimeProbe;
@@ -42,9 +43,30 @@ export class CodexRuntimeService {
       return existing;
     }
 
-    const check = this.checkAndUpgradeCodex(host).finally(() => {
-      this.versionChecks.delete(key);
-    });
+    const failed = this.failedVersionChecks.get(key);
+    if (failed !== undefined) {
+      if (failed.retryAt > Date.now()) {
+        // A failed SSH probe can be triggered by several browser requests at once. Reusing the
+        // short-lived failure prevents each request from opening another SSH/upgrade attempt while
+        // the remote host or its proxy path is unavailable.
+        throw failed.error;
+      }
+      this.failedVersionChecks.delete(key);
+    }
+
+    const check = this.checkAndUpgradeCodex(host)
+      .then((result) => {
+        this.failedVersionChecks.delete(key);
+        return result;
+      })
+      .catch((error: unknown) => {
+        this.failedVersionChecks.set(key, {
+          error,
+          retryAt: Date.now() + VERSION_CHECK_FAILURE_COOLDOWN_MS,
+        });
+        throw error;
+      })
+      .finally(() => this.versionChecks.delete(key));
     this.versionChecks.set(key, check);
     return check;
   }
@@ -155,7 +177,9 @@ export class CodexRuntimeService {
   }
 
   clearVersionCheck(hostId: number) {
-    this.versionChecks.delete(this.hostKey(hostId));
+    const key = this.hostKey(hostId);
+    this.versionChecks.delete(key);
+    this.failedVersionChecks.delete(key);
   }
 
   completeDeferredUpgrade(host: HostWithSecret) {
@@ -205,6 +229,8 @@ export class CodexRuntimeService {
     return `${currentGatewayUserId() ?? "anonymous"}:${hostId}`;
   }
 }
+
+const VERSION_CHECK_FAILURE_COOLDOWN_MS = 30_000;
 
 function hostDisplayName(host: HostWithSecret) {
   return host.name || host.sshHost;

@@ -1,5 +1,6 @@
 import { currentGatewayUserId } from "../../state/memory";
 import type { HostWithSecret } from "../ssh/ssh-types";
+import { gatewayLog } from "../../logging";
 
 type UpgradeLogDetails = Record<string, unknown>;
 
@@ -8,7 +9,7 @@ export function codexUpgradeLog(
   host: HostWithSecret,
   details: UpgradeLogDetails = {},
 ) {
-  console.info("[gateway-upgrade]", upgradeLogRecord(event, host, details));
+  gatewayLog("info", "gateway-upgrade", event, upgradeLogRecord(event, host, details));
 }
 
 export function codexUpgradeError(
@@ -17,13 +18,12 @@ export function codexUpgradeError(
   error: unknown,
   details: UpgradeLogDetails = {},
 ) {
-  console.error(
-    "[gateway-upgrade]",
-    upgradeLogRecord(event, host, {
+  gatewayLog("error", "gateway-upgrade", event, {
+    ...upgradeLogRecord(event, host, {
       ...details,
       message: error instanceof Error ? error.message : String(error),
     }),
-  );
+  });
 }
 
 function upgradeLogRecord(event: string, host: HostWithSecret, details: UpgradeLogDetails) {

@@ -1,3 +1,5 @@
+import { gatewayLog } from "../logging";
+
 export function runtimeLog(message: string, details: Record<string, unknown> = {}) {
-  console.info(`[gateway-runtime] ${message}`, details);
+  gatewayLog("info", "gateway-runtime", message, details);
 }

@@ -10,6 +10,7 @@ import { shouldNotifyMainThread } from "./thread-notification-scope";
 import type { ServerNotification } from "~~/shared/types";
 import type { ThreadGoalResolver, ThreadMetadataResolver } from "../runtime/thread-runtime-events";
 import { recordFromUnknown } from "~~/shared/utils/records";
+import { gatewayLog } from "../logging";
 import { pendingServerRequests } from "../runtime/pending-server-requests";
 
 export function dispatchThreadRuntimeNotification(
@@ -74,7 +75,7 @@ async function threadHasGoal(resolveGoal: ThreadGoalResolver) {
     const goal = recordFromUnknown(await resolveGoal())?.goal;
     return goal !== null && goal !== undefined;
   } catch (error) {
-    console.error("[gateway] failed to inspect thread goal before notification", {
+    gatewayLog("error", "gateway", "failed to inspect thread goal before notification", {
       error: error instanceof Error ? error.message : String(error),
     });
     return true;
@@ -84,7 +85,7 @@ async function threadHasGoal(resolveGoal: ThreadGoalResolver) {
 function dispatchIfPresent(notification: ServerNotification | null) {
   if (notification !== null) {
     void notificationCenter.publish(notification).catch((error: unknown) => {
-      console.error("[gateway] thread notification delivery failed", {
+      gatewayLog("error", "gateway", "thread notification delivery failed", {
         key: notification.key,
         message: error instanceof Error ? error.message : String(error),
       });

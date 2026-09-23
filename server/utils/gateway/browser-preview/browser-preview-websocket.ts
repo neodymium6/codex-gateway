@@ -3,6 +3,7 @@ import { browserPreviewManager } from "./browser-preview-manager";
 import { readPreviewCookie } from "./browser-preview-proxy";
 import { browserPreviewUpstreamConnector } from "./browser-preview-upstream-connector";
 import { BrowserPreviewWebSocketBridge } from "./browser-preview-websocket-bridge";
+import { gatewayLog } from "../logging";
 
 interface BrowserPreviewPeerContext {
   bridge?: BrowserPreviewWebSocketBridge;
@@ -23,7 +24,7 @@ export async function openBrowserPreviewWebSocket(peer: Peer) {
     return;
   }
 
-  console.info("[browser-preview] websocket opening", {
+  gatewayLog("info", "browser-preview", "websocket opening", {
     sessionId: session.sessionId,
     target: session.target.origin,
     path: requestUrl.pathname,
@@ -46,14 +47,14 @@ export async function openBrowserPreviewWebSocket(peer: Peer) {
         websocketHeaders(session.target.origin, request.headers),
       );
       upstream.once("open", () => {
-        console.info("[browser-preview] websocket upstream connected", {
+        gatewayLog("info", "browser-preview", "websocket upstream connected", {
           sessionId: session.sessionId,
         });
       });
       return upstream;
     },
     onBridgeError: (error) => {
-      console.error("[browser-preview] websocket bridge failed", {
+      gatewayLog("error", "browser-preview", "websocket bridge failed", {
         sessionId: session.sessionId,
         message: error.message,
       });

@@ -1,5 +1,6 @@
 import type { Client, SFTPWrapper } from "ssh2";
 import type { HostWithSecret } from "./ssh-types";
+import { gatewayLog } from "../../logging";
 import { isConnectionLevelSshError } from "./ssh-errors";
 
 const SFTP_OPEN_ATTEMPTS = 3;
@@ -48,7 +49,7 @@ export class SftpChannelPool {
       } catch (error) {
         lastError = error;
         if (attempt >= SFTP_OPEN_ATTEMPTS || !isConnectionLevelSshError(error)) throw error;
-        console.info("[gateway-ssh] retrying SFTP channel open", {
+        gatewayLog("info", "gateway-ssh", "retrying SFTP channel open", {
           hostId: host.id,
           hostName: host.name,
           attempt,
