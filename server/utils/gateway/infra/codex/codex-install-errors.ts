@@ -1,12 +1,3 @@
-import { isTransientSftpTransferError } from "../ssh/ssh-transfer";
-
-export function isTransientUpgradeError(error: unknown) {
-  if (isTransientSftpTransferError(error)) return true;
-  return /SSH channel closed before remote exit status|Timed out installing remote Codex|Remote command timed out/i.test(
-    messageFromError(error),
-  );
-}
-
 // Reinstallation is destructive and bandwidth-heavy, so only classify failures that prove the
 // managed executable or standalone archive is absent. Legacy npm error strings remain recognized
 // so hosts created before the standalone migration can recover once and move to the new layout.
