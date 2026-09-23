@@ -3,6 +3,7 @@ import { currentGatewayUserId, currentGatewayMemoryState } from "../state/memory
 import { BarkRequestError, sendBarkNotification } from "./bark-provider";
 import type { ServerNotification } from "~~/shared/types";
 import pRetry from "p-retry";
+import { gatewayLog } from "../logging";
 
 const MAX_DELIVERED_NOTIFICATION_KEYS = 1_000;
 const pendingDeliveries = new Map<string, Promise<void>>();
@@ -66,7 +67,7 @@ function markDelivered(key: string) {
 
 function logSuccessfulDelivery(userId: number, notification: ServerNotification) {
   const { target } = notification;
-  console.info("[notifications] Bark notification delivered", {
+  gatewayLog("info", "notifications", "Bark notification delivered", {
     userId,
     key: notification.key,
     targetKind: target.kind,

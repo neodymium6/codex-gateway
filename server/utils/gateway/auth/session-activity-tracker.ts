@@ -1,4 +1,5 @@
 import { gatewayDatabase } from "../storage/database";
+import { gatewayLog } from "../logging";
 
 const LAST_SEEN_WRITE_INTERVAL_MS = 5 * 60_000;
 const MAX_TRACKED_SESSIONS = 10_000;
@@ -30,7 +31,7 @@ export class SessionActivityTracker {
       // last_seen_at is observability metadata, not an authentication decision. A failed write
       // must not reject a session which already passed the authoritative user/expiry query.
       this.lastWrittenAt.delete(tokenHash);
-      console.warn("[gateway-auth] failed to record session activity", {
+      gatewayLog("warn", "gateway-auth", "failed to record session activity", {
         error: error instanceof Error ? error.message : String(error),
       });
     }

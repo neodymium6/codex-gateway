@@ -24,6 +24,7 @@ import {
   terminalStreamOpcode,
 } from "~~/shared/runtime/terminal-stream";
 import { terminalManager } from "../terminal/terminal-manager";
+import { gatewayLog } from "../logging";
 
 export function openRealtimePeer(peer: RealtimePeer) {
   const state = stateFor(peer);
@@ -45,7 +46,7 @@ export async function handleRealtimePeerMessage(peer: RealtimePeer, rawMessage: 
     await realtimeMessageDispatcher.dispatch(peer, request);
   } catch (error: unknown) {
     const details = realtimeErrorDetails(peer, request, error);
-    console.error("[gateway] realtime message failed", {
+    gatewayLog("error", "gateway", "realtime message failed", {
       ...details,
       message: error instanceof Error ? error.message : String(error),
     });

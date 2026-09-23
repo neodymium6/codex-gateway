@@ -11,6 +11,7 @@ import { remoteLoginShellCommand } from "../ssh/remote-command";
 import { shellQuote } from "../ssh/shell";
 import type { SshConnectionPool } from "../ssh/ssh-connection";
 import type { HostWithSecret } from "../ssh/ssh-types";
+import { gatewayLog } from "../../logging";
 import { KeyedTaskLimiter } from "../concurrency/keyed-task-limiter";
 import { parseGitStatusRecords } from "./git-status-parser";
 
@@ -202,7 +203,7 @@ function reportGitCommandFailure(
   stderr: string,
 ) {
   const detail = stderr.trim();
-  console.error("[gateway] remote Git command failed", {
+  gatewayLog("error", "gateway", "remote Git command failed", {
     hostId: host.id,
     hostName: host.name,
     operation,

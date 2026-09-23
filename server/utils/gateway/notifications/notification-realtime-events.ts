@@ -16,7 +16,9 @@ class NotificationRealtimeEvents {
         subscriber(notification);
       } catch (error) {
         // A stale browser peer must not prevent delivery to the user's other peers.
-        console.warn("[notifications] realtime subscriber rejected notification", error);
+        gatewayLog("warn", "notifications", "realtime subscriber rejected notification", {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
   }
@@ -35,3 +37,4 @@ class NotificationRealtimeEvents {
 }
 
 export const notificationRealtimeEvents = new NotificationRealtimeEvents();
+import { gatewayLog } from "../logging";

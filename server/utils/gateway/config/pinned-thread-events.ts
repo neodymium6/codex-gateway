@@ -1,3 +1,5 @@
+import { gatewayLog } from "../logging";
+
 type PinnedThreadSubscriber = () => void;
 
 class PinnedThreadEvents {
@@ -8,7 +10,9 @@ class PinnedThreadEvents {
       try {
         subscriber();
       } catch (error) {
-        console.warn("[gateway] pinned thread subscriber failed", error);
+        gatewayLog("warn", "gateway", "pinned thread subscriber failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
   }

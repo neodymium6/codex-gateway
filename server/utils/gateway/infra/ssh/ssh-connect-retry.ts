@@ -1,4 +1,5 @@
 import type { HostWithSecret } from "./ssh-types";
+import { gatewayLog } from "../../logging";
 
 export const SSH_CONNECTION_CLOSED_BEFORE_READY = "SSH connection closed before ready";
 
@@ -41,7 +42,7 @@ async function delay(ms: number) {
 }
 
 function logSshConnectRetry(host: HostWithSecret, attempt: number, error: unknown) {
-  console.info("[gateway-ssh] retrying transient SSH connect failure", {
+  gatewayLog("info", "gateway-ssh", "retrying transient SSH connect failure", {
     hostId: host.id,
     hostName: host.name,
     sshHost: host.sshHost,
