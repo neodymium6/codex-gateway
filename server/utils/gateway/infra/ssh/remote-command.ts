@@ -45,15 +45,10 @@ if ! [ -S "$socket" ]; then
   # beside it as well: /tmp is shared by every Unix user, so a fixed filename there lets one
   # user's app-server block another user's launch before Codex can create its private socket.
   mkdir -p "$control_dir"
-  # The official daemon command owns shutdown snapshots and restores them on its next startup.
-  # The detached launch is only a lifecycle bootstrap; the proxy below remains the Gateway client.
-  nohup "$CODEX_BIN" app-server daemon bootstrap --remote-control >"$log_file" 2>&1 </dev/null &
-  for i in $(seq 1 100); do
-    if [ -S "$socket" ] && codex_gateway_socket_has_listener; then
-      break
-    fi
-    sleep 0.1
-  done
+  # Bootstrap is an official synchronous lifecycle command: it installs/selects the managed
+  # daemon and waits until the app-server socket is ready. Do not background it from SSH; the
+  # bootstrap process owns the daemon handoff and must stay attached until that handoff completes.
+  "$CODEX_BIN" app-server daemon bootstrap --remote-control >"$log_file" 2>&1
 fi
 if ! [ -S "$socket" ] || ! codex_gateway_socket_has_listener; then
   echo "Codex app-server did not create a listening socket: $socket" >&2
@@ -107,13 +102,15 @@ export function codexRemoteTerminateUnmanagedAppServerPayload() {
   return codexRemotePayload(`
 set -eu
 socket="\${CODEX_HOME:-$HOME/.codex}/app-server-control/app-server-control.sock"
+${appServerSocketHasListenerSnippet()}
 if [ ! -S "$socket" ]; then
   exit 0
 fi
 pid=""
 inode=""
 if [ -r /proc/net/unix ]; then
-  inode="$(awk -v socket="$socket" '$NF == socket { print $7; exit }' /proc/net/unix)"
+  listener_socket="$(codex_gateway_socket_path)"
+  inode="$(awk -v socket="$listener_socket" '$NF == socket { print $7; exit }' /proc/net/unix)"
 fi
 if [ -n "$inode" ]; then
   for fd in /proc/[0-9]*/fd/*; do
@@ -126,7 +123,8 @@ if [ -n "$inode" ]; then
   done
 fi
 if [ -z "$pid" ] && command -v ss >/dev/null 2>&1; then
-  pid="$(ss -xlpH 2>/dev/null | awk -v socket="$socket" '
+  listener_socket="$(codex_gateway_socket_path)"
+  pid="$(ss -xlpH 2>/dev/null | awk -v socket="$listener_socket" '
     index($0, socket) {
       if (match($0, /pid=[0-9]+/)) {
         print substr($0, RSTART + 4, RLENGTH - 4)
@@ -232,12 +230,25 @@ true
 
 function appServerSocketHasListenerSnippet() {
   return `
+codex_gateway_socket_path() {
+  if [ -L "$socket" ]; then
+    target="$(readlink "$socket" 2>/dev/null || true)"
+    case "$target" in
+      /*) printf '%s\\n' "$target" ;;
+      *) printf '%s/%s\\n' "$(dirname "$socket")" "$target" ;;
+    esac
+    return
+  fi
+  printf '%s\\n' "$socket"
+}
+
 codex_gateway_socket_has_listener() {
   if ! [ -S "$socket" ]; then
     return 1
   fi
   if [ -r /proc/net/unix ]; then
-    awk -v socket="$socket" '$NF == socket && $4 == "00010000" { found = 1 } END { exit found ? 0 : 1 }' /proc/net/unix
+    listener_socket="$(codex_gateway_socket_path)"
+    awk -v socket="$listener_socket" '$NF == socket && $4 == "00010000" { found = 1 } END { exit found ? 0 : 1 }' /proc/net/unix
     return $?
   fi
   return 0

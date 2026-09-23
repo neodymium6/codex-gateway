@@ -117,7 +117,10 @@ if [ -n "$pids" ]; then
   kill -KILL $pids >/dev/null 2>&1 || true
 fi
 rm -f "$socket"
-rm -f "$daemon_dir"/app-server.pid "$daemon_dir"/app-server.pid.lock "$daemon_dir"/app-server.stderr.log "$daemon_dir"/loaded-threads.json
+rm -f "$daemon_dir"/app-server.pid "$daemon_dir"/app-server.pid.lock "$daemon_dir"/app-server.stderr.log
+rm -f "$daemon_dir"/daemon.pid "$daemon_dir"/daemon.pid.lock "$daemon_dir"/daemon.stderr.log
+rm -f "$daemon_dir"/daemon-updater.pid "$daemon_dir"/daemon-updater.pid.lock "$daemon_dir"/daemon-updater.stderr.log
+rm -f "$daemon_dir"/loaded-threads.json
 `,
   );
 }
