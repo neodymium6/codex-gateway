@@ -120,6 +120,10 @@ services:
       CODEX_GATEWAY_CONFIG_SECRET: e2e-config-secret
       CODEX_GATEWAY_DB_PATH: /workspace/codex-gateway/.data-e2e/codex-gateway.db
       NUXT_IGNORE_LOCK: "1"
+      CODEX_GATEWAY_AUTH_MODE: ${E2E_GATEWAY_AUTH_MODE:-password}
+      CODEX_GATEWAY_TRUSTED_USER: ${E2E_GATEWAY_TRUSTED_USER:-e2e}
+      CODEX_GATEWAY_TRUSTED_ORIGINS: http://codex.127.0.0.1.nip.io:3100
+      NUXT_PUBLIC_DEFAULT_LOCALE: ${E2E_DEFAULT_LOCALE:-zh}
       # Preview origins enter through the nginx sidecar below. This mirrors production so remote
       # /_nuxt/* assets cannot be intercepted as Gateway public assets before reaching the proxy.
       BROWSER_PREVIEW_PUBLIC_PORT: "3200"
@@ -169,6 +173,7 @@ services:
     environment:
       CI: ${CI:-}
       E2E_CONTAINERIZED: "1"
+      E2E_GATEWAY_AUTH_MODE: ${E2E_GATEWAY_AUTH_MODE:-password}
       E2E_DATABASE_PREPARED: "1"
       E2E_SOURCE_DIR: /workspace/source
       E2E_CODEX_HOME: /codex-auth

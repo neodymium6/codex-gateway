@@ -208,6 +208,10 @@ Environment variables:
 | --- | --- | --- |
 | `CODEX_GATEWAY_CONFIG_SECRET` | Yes in production | Stable secret used to encrypt stored host/project/thread config. |
 | `CODEX_GATEWAY_DB_PATH` | No | SQLite database path. Defaults to the app data path; Docker uses `/data/codex-gateway.db`. |
+| `CODEX_GATEWAY_AUTH_MODE` | No | `password` (default) or explicitly opted-in `trusted-network`. |
+| `CODEX_GATEWAY_TRUSTED_USER` | Trusted network only | Existing active Gateway username used for automatic sign-in. |
+| `CODEX_GATEWAY_TRUSTED_ORIGINS` | Trusted network only | Comma-separated exact HTTP(S) origins, including ports when non-default; no paths or wildcards. |
+| `NUXT_PUBLIC_DEFAULT_LOCALE` | No | `zh` (default) or `en`. An explicit browser language selection persists in a cookie. |
 | `HOST` | No | Nuxt listen host. Docker uses `0.0.0.0`. |
 | `PORT` | No | Nuxt listen port. Docker uses `3000`. |
 | `BROWSER_PREVIEW_DOMAIN` | Browser preview | Parent domain for isolated preview origins; configure wildcard DNS for `p-*.your-domain`. |
@@ -226,6 +230,31 @@ pnpm user:create <username> <password>
 `CODEX_GATEWAY_CONFIG_SECRET` encrypts stored connection config. Use a stable, sufficiently long secret in production. Changing it makes existing encrypted config unreadable.
 
 ## Security Model
+
+### Optional trusted-network sign-in
+
+For a private deployment where every permitted network user is trusted to operate
+the configured SSH account, set `CODEX_GATEWAY_AUTH_MODE=trusted-network`, an
+existing `CODEX_GATEWAY_TRUSTED_USER`, and exact `CODEX_GATEWAY_TRUSTED_ORIGINS`
+(for example `https://gateway.example.test`). Provision the user once using the
+normal user-creation command. Missing/inactive users and invalid configuration
+fail closed; this mode never creates users automatically.
+
+The browser automatically obtains an ordinary bearer session for the fixed user;
+HTTP and WebSocket authentication remain enabled. Expired/revoked sessions can be
+issued again while the user remains active and trusted-network mode is enabled.
+The sign-out button is hidden because it would immediately sign back in. Disable
+the user or network access to revoke this capability; switching back to password
+mode does not revoke existing sessions.
+
+**Do not expose this mode to the public Internet.** Anyone able to reach the
+bootstrap endpoint and supply an allowed Origin can act as the configured user,
+including their SSH/sudo permissions. Origin validation prevents ordinary
+cross-site browser requests; it is not network authentication. Keep a firewall,
+VPN access policy or equivalent boundary, and do not permit untrusted preview
+content on an allowed Gateway origin. Password authentication remains the default.
+
+### Common boundaries
 
 - SSH credentials and Codex tokens stay on the server side.
 - Browser clients authenticate to Gateway with a Bearer token.
