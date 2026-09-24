@@ -49,7 +49,9 @@ export class HostMetricsRemoteParser {
   private consumeLine(line: string) {
     if (line.startsWith("@@BEGIN\t")) {
       const sampledAtMs = Number(line.slice("@@BEGIN\t".length));
-      if (!Number.isFinite(sampledAtMs)) throw new Error("Invalid host metrics timestamp");
+      if (!Number.isSafeInteger(sampledAtMs) || !Number.isFinite(new Date(sampledAtMs).getTime())) {
+        throw new Error("Invalid host metrics timestamp");
+      }
       this.frame = { sampledAtMs, sections: emptySections(), gpuProcessesIncluded: false };
       this.section = null;
       return null;

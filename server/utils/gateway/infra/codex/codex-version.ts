@@ -6,6 +6,16 @@ export interface ParsedCodexVersion {
   version: string;
 }
 
+// The app-server's originator can be a desktop/remote client, not codex_cli_rs.
+// Only the leading product version identifies the running server; later tokens
+// can contain the connecting client's (newer) version.
+export function parseAppServerVersion(output: string): ParsedCodexVersion | null {
+  const raw = output.trim();
+  const match = raw.match(/^[A-Za-z0-9_.-]+\/(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)(?:\s|$)/);
+  const version = match?.[1];
+  return version === undefined ? null : { raw, version };
+}
+
 export function parseCodexVersion(output: string): ParsedCodexVersion | null {
   const raw = output.trim();
   const match = raw.match(
