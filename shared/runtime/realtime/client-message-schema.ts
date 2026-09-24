@@ -101,23 +101,11 @@ export const realtimeClientMessageSchema: z.ZodType<RealtimeClientMessage> = z.d
       .strict(),
     z
       .object({
-        type: z.literal("thread.turns.load"),
+        type: z.literal("thread.timeline.load"),
         ...requestIdField,
         ...threadScopeFields,
         cursor: nullableString,
         limit: positiveId.optional(),
-        sortDirection: z.enum(["asc", "desc"]).optional(),
-      })
-      .strict(),
-    z
-      .object({
-        type: z.literal("thread.items.load"),
-        ...requestIdField,
-        ...threadScopeFields,
-        turnId: nonEmptyString,
-        cursor: nullableString,
-        limit: positiveId.optional(),
-        sortDirection: z.enum(["asc", "desc"]).optional(),
       })
       .strict(),
     z

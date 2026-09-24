@@ -1,8 +1,7 @@
 import type {
   GatewayThread,
   GatewayEvent,
-  ThreadHistoryState,
-  ThreadTimelineTurn,
+  ThreadTimelineHistoryState,
   TerminalOpenTarget,
   TerminalSessionSnapshot,
   ThreadRuntimeStatus,
@@ -37,11 +36,9 @@ export interface ThreadViewState {
   projectId: number | null;
   threadId: string;
   currentThread: GatewayThread | null;
-  history: ThreadHistoryState | null;
-  timelineTurns: ThreadTimelineTurn[];
+  history: ThreadTimelineHistoryState | null;
   events: GatewayEvent[];
-  olderTurnsCursor: string | null;
-  newerTurnsCursor: string | null;
+  oldestTimelineCursor: string | null;
   lastEventId: number;
   /** Highest event id already reduced into this view's history. */
   appliedEventId?: number;

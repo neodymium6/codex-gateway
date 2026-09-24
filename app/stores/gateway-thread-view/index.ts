@@ -6,7 +6,7 @@ import type {
   GatewayEvent,
   GatewayThread,
   ThreadHistoryState,
-  ThreadTimelineTurn,
+  ThreadTimelineHistoryState,
 } from "~~/shared/types";
 import type { SubAgentPanelState, ThreadViewState } from "@/stores/gateway/types";
 import { useGatewayNavigationStore } from "@/stores/gateway-navigation";
@@ -19,13 +19,11 @@ export const useGatewayThreadViewStore = defineStore("gateway-thread-view", () =
   const subAgentPanels = ref<SubAgentPanelState[]>([]);
   const viewEpoch = ref(0);
   const currentThread = ref<GatewayThread | null>(null);
-  const history = ref<ThreadHistoryState | null>(null);
-  const timelineTurns = ref<ThreadTimelineTurn[]>([]);
+  const history = ref<ThreadTimelineHistoryState | null>(null);
   const events = ref<GatewayEvent[]>([]);
   const loading = ref(false);
   const loadingOlderTurns = ref(false);
-  const olderTurnsCursor = ref<string | null>(null);
-  const newerTurnsCursor = ref<string | null>(null);
+  const oldestTimelineCursor = ref<string | null>(null);
   const lastEventId = ref(0);
   const appliedEventId = ref(0);
   const eventEpoch = ref("");
@@ -50,7 +48,6 @@ export const useGatewayThreadViewStore = defineStore("gateway-thread-view", () =
   function setHistory(nextHistory: ThreadHistoryState | null) {
     if (nextHistory === null) {
       history.value = null;
-      timelineTurns.value = [];
       return;
     }
     // Server snapshots and pages already arrive projected. Client reducers can still create a new
@@ -59,18 +56,15 @@ export const useGatewayThreadViewStore = defineStore("gateway-thread-view", () =
     // not call this function merely because the selected route changed.
     const projected = projectThreadTimelineHistory(retainRecentThreadTurns(nextHistory)!);
     history.value = projected;
-    timelineTurns.value = projected.thread.turns;
   }
 
   function resetCurrentView() {
     currentThread.value = null;
     history.value = null;
-    timelineTurns.value = [];
     events.value = [];
     loading.value = false;
     loadingOlderTurns.value = false;
-    olderTurnsCursor.value = null;
-    newerTurnsCursor.value = null;
+    oldestTimelineCursor.value = null;
     lastEventId.value = 0;
     appliedEventId.value = 0;
     eventEpoch.value = "";
@@ -91,12 +85,10 @@ export const useGatewayThreadViewStore = defineStore("gateway-thread-view", () =
     viewEpoch,
     currentThread,
     history,
-    timelineTurns,
     events,
     loading,
     loadingOlderTurns,
-    olderTurnsCursor,
-    newerTurnsCursor,
+    oldestTimelineCursor,
     lastEventId,
     appliedEventId,
     eventEpoch,

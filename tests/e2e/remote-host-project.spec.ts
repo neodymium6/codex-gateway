@@ -400,13 +400,12 @@ test("connects to a real SSH Codex host and lists a project thread created by ap
   await expect(recentThread).toBeVisible();
 
   const staleTurnsResponse = await sendRealtimeRawRequest(page, {
-    type: "thread.turns.load",
+    type: "thread.timeline.load",
     requestId: `e2e-stale-turns-${randomUUID()}`,
     hostId: host.id,
     threadId,
-    cursor: JSON.stringify({ turnId: randomUUID(), includeAnchor: false }),
-    limit: 5,
-    sortDirection: "desc",
+    cursor: "stale-timeline-cursor",
+    limit: 100,
   });
   expect(staleTurnsResponse.type, JSON.stringify(staleTurnsResponse)).toBe("error");
   if (staleTurnsResponse.type !== "error") {

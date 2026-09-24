@@ -1,4 +1,5 @@
-import { CLIENT_THREAD_TURN_CACHE_LIMIT, OLDER_TURN_PAGE_LIMIT } from "~~/shared/config";
+import { CLIENT_THREAD_TURN_CACHE_LIMIT, TIMELINE_PAGE_LIMIT } from "~~/shared/config";
+import { timelinePageToTurns } from "~~/shared/thread-history/app-server-timeline";
 import { threadTurnsFromHistory } from "~~/shared/thread-history/shape";
 import { mergeThreadTurns } from "~~/shared/thread-history/turns";
 import { useGatewayBootstrapStore } from "@/stores/gateway-bootstrap";
@@ -8,7 +9,7 @@ import { cacheSelectedThreadView } from "@/stores/gateway/thread-open/view-state
 import { setSelectedThreadHistory } from "@/stores/gateway/thread-open/thread-view-cache";
 import { errorMessageLabels, messageFromError } from "@/stores/gateway/thread-utils/identity";
 import { isStaleThreadCursorError } from "./stale-cursor";
-import { requestThreadTurnsPage } from "./transport";
+import { requestThreadTimelinePage } from "./transport";
 import type { Translate } from "./types";
 import { captureSessionEpoch } from "@/utils/session-epoch";
 
@@ -20,7 +21,7 @@ export async function loadOlderTurns(t: Translate, options: { limit?: number } =
   if (
     navigation.selectedHostId === null ||
     navigation.selectedThreadId === null ||
-    views.olderTurnsCursor === null ||
+    views.oldestTimelineCursor === null ||
     views.loadingOlderTurns
   ) {
     return;
@@ -38,12 +39,11 @@ export async function loadOlderTurns(t: Translate, options: { limit?: number } =
   }
   views.loadingOlderTurns = true;
   try {
-    const result = await requestThreadTurnsPage({
+    const page = await requestThreadTimelinePage({
       hostId,
       threadId,
-      cursor: views.olderTurnsCursor,
-      limit: options.limit ?? OLDER_TURN_PAGE_LIMIT,
-      sortDirection: "desc",
+      cursor: views.oldestTimelineCursor,
+      limit: options.limit ?? TIMELINE_PAGE_LIMIT,
     });
     if (
       !sessionIsCurrent() ||
@@ -52,12 +52,11 @@ export async function loadOlderTurns(t: Translate, options: { limit?: number } =
     ) {
       return;
     }
-    const turns = threadTurnsFromHistory(result.history);
+    const turns = timelinePageToTurns(page);
     setSelectedThreadHistory(
       mergeThreadTurns(views.history, views.currentThread, threadId, turns, "prepend"),
     );
-    views.olderTurnsCursor = result.turnsPage.nextCursor;
-    views.newerTurnsCursor = result.turnsPage.backwardsCursor ?? views.newerTurnsCursor;
+    views.oldestTimelineCursor = page.nextCursor;
     cacheSelectedThreadView();
   } catch (error: unknown) {
     if (!sessionIsCurrent()) return;
@@ -65,8 +64,7 @@ export async function loadOlderTurns(t: Translate, options: { limit?: number } =
       if (navigation.selectedHostId !== hostId || navigation.selectedThreadId !== threadId) {
         return;
       }
-      views.olderTurnsCursor = null;
-      views.newerTurnsCursor = null;
+      views.oldestTimelineCursor = null;
       cacheSelectedThreadView();
       await views.refreshSelectedThreadSnapshot({ showLoading: false, scrollToLatest: false });
       return;

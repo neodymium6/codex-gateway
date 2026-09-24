@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { INITIAL_TURN_PAGE_LIMIT, OLDER_TURN_PAGE_LIMIT } from "~~/shared/config";
+import { INITIAL_TURN_PAGE_LIMIT } from "~~/shared/config";
 import { optionalPositiveInt } from "./common";
 import { agentProviderIdSchema } from "~~/shared/agent/providers";
 
@@ -26,23 +26,6 @@ export const threadMetadataListSchema = z.object({
     .string()
     .transform((value) => [...new Set(value.split(",").map((item) => item.trim()))])
     .pipe(z.array(z.string().min(1)).min(1).max(20)),
-});
-
-export const threadTurnsListSchema = z.object({
-  hostId: z.coerce.number().int().positive(),
-  threadId: z.string().trim().min(1),
-  cursor: z.string().trim().nullable().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(OLDER_TURN_PAGE_LIMIT),
-  sortDirection: z.enum(["asc", "desc"]).default("desc"),
-});
-
-export const threadItemsListSchema = z.object({
-  hostId: z.coerce.number().int().positive(),
-  threadId: z.string().trim().min(1),
-  turnId: z.string().trim().min(1),
-  cursor: z.string().trim().nullable().optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(100),
-  sortDirection: z.enum(["asc", "desc"]).default("asc"),
 });
 
 export const threadRenameSchema = z.object({

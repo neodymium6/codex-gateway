@@ -26,7 +26,7 @@ const props = defineProps<{
   workspaceRoot?: string | null;
   loading: boolean;
   loadingOlder: boolean;
-  olderTurnsCursor: string | null;
+  oldestTimelineCursor: string | null;
   scrollToLatestToken?: number;
 }>();
 
@@ -107,7 +107,7 @@ function selectedThreadMode() {
 }
 
 function handleReachStart() {
-  if (props.olderTurnsCursor && !props.loadingOlder) emit("loadOlder");
+  if (props.oldestTimelineCursor && !props.loadingOlder) emit("loadOlder");
 }
 
 function handleUserDetachedChange(detached: boolean) {
@@ -158,7 +158,10 @@ watch(
     @user-detached-change="handleUserDetachedChange"
   >
     <template #overlay="{ visible }">
-      <div v-if="olderTurnsCursor && visible" class="pointer-events-auto flex justify-center pt-2">
+      <div
+        v-if="oldestTimelineCursor && visible"
+        class="pointer-events-auto flex justify-center pt-2"
+      >
         <Button
           data-testid="load-older-turns-button"
           variant="outline"

@@ -98,8 +98,7 @@ function applyCommonThreadResult(
   if (hostId === null) return;
   useGatewayThreadActivityStore().upsertGatewayThread(result.thread, gateway.projects);
   views.events = result.recentEvents;
-  views.olderTurnsCursor = result.turnsPage.nextCursor;
-  views.newerTurnsCursor = result.turnsPage.backwardsCursor;
+  views.oldestTimelineCursor = result.oldestTimelineCursor;
   views.lastEventId = explicitLastEventId ?? result.recentEvents.at(-1)?.id ?? 0;
   views.eventEpoch = result.eventEpoch;
   // A metadata-only thread/read does not expose persisted model/effort. Null means unknown, not

@@ -12,14 +12,14 @@ import { gatewayThreadFixture } from "./fixtures/gateway-thread";
 import {
   buildTextTurns,
   frameSpread,
-  installDeferredThreadTurnsLoadStub,
+  installDeferredThreadTimelineLoadStub,
   requestOlderTurnsFromStore,
-  releaseDeferredThreadTurnsLoad,
+  releaseDeferredThreadTimelineLoad,
   startBottomDistanceTracking,
   startLocatorTopTracking,
   stopFrameTracking,
   threadTurnCount,
-  threadTurnsLoadRequests,
+  threadTimelineLoadRequests,
   waitForAnimationFrames,
 } from "./helpers/history-pagination";
 import {
@@ -326,21 +326,17 @@ test("virtualizes a large running turn in one agent timeline", async ({ page }, 
 test("explicit history prepend keeps the mobile timeline visually stable", async ({ page }) => {
   await openApp(page);
   const threadId = "mobile-explicit-history-prepend";
-  await installDeferredThreadTurnsLoadStub(page, {
-    type: "thread.turns.page",
-    requestId: "mobile-explicit-history-page",
-    hostId: 1,
-    threadId,
+  await installDeferredThreadTimelineLoadStub(page, {
     history: {
       thread: { id: threadId, turns: buildTextTurns(1, 3, "mobile top-up turn", 14) },
     },
-    turnsPage: { nextCursor: null, backwardsCursor: null },
+    nextCursor: null,
   });
   await seedGatewayThread(page, {
     projectId: 1,
     threadId,
     currentThread: { id: threadId, name: "Mobile Top Up" },
-    olderTurnsCursor: JSON.stringify({ turnId: "turn-004", includeAnchor: false }),
+    oldestTimelineCursor: "cursor-before-oldest",
     history: {
       thread: { id: threadId, turns: buildTextTurns(4, 5, "mobile top-up turn", 14) },
     },
@@ -349,13 +345,13 @@ test("explicit history prepend keeps the mobile timeline visually stable", async
   const latestRow = page.locator('[data-row-key*=":turn-turn-005:"][data-row-section="final"]');
   await expect(latestRow).toBeVisible();
   await page.waitForTimeout(250);
-  expect(await threadTurnsLoadRequests(page)).toHaveLength(0);
+  expect(await threadTimelineLoadRequests(page)).toHaveLength(0);
   await startLocatorTopTracking(latestRow);
   await requestOlderTurnsFromStore(page);
   await expect
-    .poll(() => threadTurnsLoadRequests(page).then((requests) => requests.length))
+    .poll(() => threadTimelineLoadRequests(page).then((requests) => requests.length))
     .toBe(1);
-  await releaseDeferredThreadTurnsLoad(page);
+  await releaseDeferredThreadTimelineLoad(page);
   await expect.poll(() => threadTurnCount(page)).toBe(5);
   await waitForAnimationFrames(page, 8);
   const samples = await stopFrameTracking(page);
@@ -367,34 +363,30 @@ test("mobile viewport resize during explicit history prepend stays bottom pinned
 }) => {
   await openApp(page);
   const threadId = "mobile-resizing-history-prepend";
-  await installDeferredThreadTurnsLoadStub(page, {
-    type: "thread.turns.page",
-    requestId: "mobile-resizing-turns-page",
-    hostId: 1,
-    threadId,
+  await installDeferredThreadTimelineLoadStub(page, {
     history: {
       thread: { id: threadId, turns: buildTextTurns(1, 3, "mobile resize turn", 14) },
     },
-    turnsPage: { nextCursor: null, backwardsCursor: null },
+    nextCursor: null,
   });
   await seedGatewayThread(page, {
     projectId: 1,
     threadId,
     currentThread: { id: threadId, name: "Mobile Resize Top Up" },
-    olderTurnsCursor: JSON.stringify({ turnId: "turn-004", includeAnchor: false }),
+    oldestTimelineCursor: "cursor-before-oldest",
     history: {
       thread: { id: threadId, turns: buildTextTurns(4, 5, "mobile resize turn", 14) },
     },
   });
 
   await page.waitForTimeout(250);
-  expect(await threadTurnsLoadRequests(page)).toHaveLength(0);
+  expect(await threadTimelineLoadRequests(page)).toHaveLength(0);
   await startBottomDistanceTracking(page);
   await requestOlderTurnsFromStore(page);
   await expect
-    .poll(() => threadTurnsLoadRequests(page).then((requests) => requests.length))
+    .poll(() => threadTimelineLoadRequests(page).then((requests) => requests.length))
     .toBe(1);
-  await releaseDeferredThreadTurnsLoad(page);
+  await releaseDeferredThreadTimelineLoad(page);
   await page.setViewportSize({ width: 393, height: 820 });
   await expect.poll(() => threadTurnCount(page)).toBe(5);
   await waitForAnimationFrames(page, 8);
@@ -684,8 +676,7 @@ test("opens and closes the subagent side panel on mobile", async ({ page }) => {
           },
         },
         events: [],
-        olderTurnsCursor: null,
-        newerTurnsCursor: null,
+        oldestTimelineCursor: null,
         lastEventId: 0,
         eventEpoch: "e2e-event-epoch",
         loading: false,

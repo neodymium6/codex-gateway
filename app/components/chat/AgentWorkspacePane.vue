@@ -22,7 +22,7 @@ const {
   historyTurns,
   loading,
   loadingOlderTurns,
-  olderTurnsCursor,
+  oldestTimelineCursor,
   scrollToLatestToken,
   visibleError,
   selectedThreadViewReady,
@@ -72,7 +72,7 @@ const showThreadLoading = computed(
         :workspace-root="currentThread?.cwd ?? null"
         :loading="loading"
         :loading-older="loadingOlderTurns"
-        :older-turns-cursor="olderTurnsCursor"
+        :oldest-timeline-cursor="oldestTimelineCursor"
         :scroll-to-latest-token="scrollToLatestToken"
         @load-older="threadTurns.loadOlderTurns"
       />

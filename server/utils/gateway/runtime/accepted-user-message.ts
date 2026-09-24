@@ -15,7 +15,7 @@ export function recordAcceptedUserMessage(input: {
   // App Server persists accepted turn/start and turn/steer input before it necessarily emits the
   // matching user-message lifecycle item. The submitting browser has an optimistic row, but every
   // other subscribed browser would otherwise remain stale until that lifecycle event or an
-  // explicit thread/items/list request. Publish the successful command at this server boundary so
+  // explicit history request. Publish the successful command at this server boundary so
   // all peers and the snapshot cache reduce the same canonical item immediately. The eventual
   // provider item carries the same clientId and therefore replaces this provisional id in the
   // shared reducer instead of creating a duplicate.

@@ -7,28 +7,17 @@ import type {
   ThreadSettingsState,
   ThreadTokenUsageState,
   ThreadTimelineHistoryState,
-  ThreadHistoryTurn,
   RpcEnvelope,
 } from "~~/shared/types";
-import { OLDER_TURN_PAGE_LIMIT } from "~~/shared/config";
 
-export const DEFAULT_TURN_PAGE_LIMIT = OLDER_TURN_PAGE_LIMIT;
-
-export interface TurnsPage {
-  data?: ThreadHistoryTurn[];
-  nextCursor?: string | null;
-  backwardsCursor?: string | null;
-}
+export const DEFAULT_TIMELINE_PAGE_LIMIT = 100;
 
 export interface ThreadOpenSnapshot {
   thread: AppServerThread;
   /** Materialized once at the app-server/event boundary; cache hits return this object directly. */
   history: ThreadTimelineHistoryState;
+  oldestTimelineCursor: string | null;
   projectId: number | null;
-  turnsPage: {
-    nextCursor: string | null;
-    backwardsCursor: string | null;
-  };
   /** Null when a metadata-only thread/read cannot expose persisted model settings. */
   threadSettings: ThreadSettingsState | null;
   tokenUsage: ThreadTokenUsageState | null;

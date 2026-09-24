@@ -177,7 +177,6 @@ test("opening a cached thread applies terminal events before deriving composer s
         tokenUsage: null,
         projectId: 1,
         project: defaultGatewayProject(),
-        turnsPage: { nextCursor: null, backwardsCursor: null },
         recentEvents: [
           gatewayEventFromNotification({
             id: 1,
@@ -313,8 +312,7 @@ test("live terminal event updates selected thread even when snapshot cursor is a
         ),
         history: { thread: { id: cursorThreadId, turns: [runningTurn] } },
         events: [],
-        olderTurnsCursor: null,
-        newerTurnsCursor: null,
+        oldestTimelineCursor: null,
         lastEventId: 11,
         eventEpoch: "e2e-event-epoch",
         loading: false,

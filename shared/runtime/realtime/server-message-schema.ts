@@ -1,7 +1,12 @@
 import { z } from "zod";
 import type { RealtimeServerMessage } from "../../types";
 import { threadTimelineItemTypes } from "../../thread-history/types";
-import { gatewayThreadSchema, threadAttachmentSchema, threadGoalSchema } from "../app-server";
+import {
+  gatewayThreadSchema,
+  threadAttachmentSchema,
+  threadGoalSchema,
+  threadTimelinePageSchema,
+} from "../app-server";
 import { agentEventSchema } from "../../agent/events";
 import { realtimeClientMessageSchema } from "./client-message-schema";
 import {
@@ -61,12 +66,6 @@ const gatewayEventSchema = z
     threadId: nonEmptyString,
     event: agentEventSchema,
     createdAt: nonEmptyString,
-  })
-  .strict();
-const turnsPageStateSchema = z
-  .object({
-    nextCursor: z.string().nullable(),
-    backwardsCursor: z.string().nullable(),
   })
   .strict();
 const tmuxPaneSnapshotSchema = z
@@ -168,7 +167,7 @@ const threadOpenResultFields = {
   tokenUsage: tokenUsageSchema.nullable().optional(),
   projectId: positiveId.nullable().optional(),
   project: projectSchema.nullable().optional(),
-  turnsPage: turnsPageStateSchema,
+  oldestTimelineCursor: z.string().nullable(),
   recentEvents: z.array(gatewayEventSchema),
 };
 const terminalSessionSchema = z
@@ -572,22 +571,12 @@ export const realtimeServerMessageSchema: z.ZodType<RealtimeServerMessage> = z.d
       .strict(),
     z
       .object({
-        type: z.literal("thread.turns.page"),
+        type: z.literal("thread.timeline.page"),
         ...requestIdField,
         ...threadScopeFields,
-        history: threadHistorySchema,
-        turnsPage: turnsPageStateSchema,
-      })
-      .strict(),
-    z
-      .object({
-        type: z.literal("thread.items.page"),
-        ...requestIdField,
-        ...threadScopeFields,
-        turnId: nonEmptyString,
-        items: z.array(projectedHistoryItemSchema),
+        data: threadTimelinePageSchema.shape.data,
         nextCursor: z.string().nullable(),
-        backwardsCursor: z.string().nullable(),
+        activeRealtimeSessionAtPageStart: z.string().nullable(),
       })
       .strict(),
     z

@@ -90,7 +90,7 @@ export function upsertHistoryItem(hostId: number, threadId: string, item: Thread
   const view = views.threadViews[key];
   if (view) {
     // Background subscriptions can mutate a thread while another route is selected. Use the same
-    // cache boundary as batched realtime events so history and timelineTurns remain atomic; direct
+    // cache boundary as batched realtime events so the projected history remains atomic; direct
     // assignment here previously left the projection stale until a full page refresh.
     patchThreadView(hostId, threadId, {
       history: update(view.history, view.currentThread),
