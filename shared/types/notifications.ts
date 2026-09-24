@@ -1,3 +1,5 @@
+import type { BrowserNotificationSettings } from "./config";
+
 export type ServerNotificationTarget =
   | {
       kind: "thread";
@@ -14,6 +16,7 @@ export type ServerNotificationTarget =
     };
 
 export interface ServerNotification {
+  category: Exclude<keyof BrowserNotificationSettings, "hostLifecycle">;
   key: string;
   title: string;
   body: string;

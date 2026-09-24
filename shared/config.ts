@@ -16,8 +16,19 @@ export const CLIENT_THREAD_TURN_CACHE_LIMIT = 20;
 export const DEFAULT_BARK_SERVER_URL = "https://api.day.app";
 export const DEFAULT_BARK_GROUP = "Codex Gateway";
 
+export function defaultBrowserNotificationSettings() {
+  return {
+    turnCompleted: true,
+    goalCompleted: true,
+    userInputRequested: true,
+    tmuxCompleted: true,
+    hostLifecycle: true,
+  };
+}
+
 export function defaultNotificationSettings(): GatewayNotificationSettings {
   return {
+    browser: defaultBrowserNotificationSettings(),
     bark: {
       enabled: false,
       serverUrl: DEFAULT_BARK_SERVER_URL,
@@ -35,6 +46,7 @@ export function normalizeNotificationSettings(
   const deviceKey = settings?.bark?.deviceKey?.trim();
   const group = settings?.bark?.group?.trim();
   return {
+    browser: { ...defaults.browser, ...settings?.browser },
     bark: {
       ...defaults.bark,
       ...settings?.bark,

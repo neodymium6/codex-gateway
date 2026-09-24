@@ -8,6 +8,7 @@ import type { CodexVersionChecker } from "./codex-version-checker";
 import { codexUpgradeLog } from "./codex-upgrade-log";
 import type { CodexUpgradeResources } from "./codex-upgrade-resources";
 import { assertCodexManagementAllowed } from "./codex-management-policy";
+import { serverText } from "../../notifications/locale";
 
 export class CodexUpgradeWorkflow {
   private readonly coordinator = new CodexUpgradeCoordinator();
@@ -87,8 +88,14 @@ export class CodexUpgradeWorkflow {
           hostId: host.id,
           status: runtimeVersionSupported ? "connecting" : "restarting",
           message: runtimeVersionSupported
-            ? `${hostDisplayName(host)} 的远端 Codex 已是最新版本 ${beforeVersion}`
-            : `${hostDisplayName(host)} 的远端 Codex CLI 已是 ${beforeVersion}，正在重启旧 app-server ${currentRuntimeVersion}`,
+            ? serverText(
+                `Remote Codex on ${hostDisplayName(host)} is up to date (${beforeVersion})`,
+                `${hostDisplayName(host)} 的远端 Codex 已是最新版本 ${beforeVersion}`,
+              )
+            : serverText(
+                `Codex CLI on ${hostDisplayName(host)} is ${beforeVersion}; restarting old app-server ${currentRuntimeVersion}`,
+                `${hostDisplayName(host)} 的远端 Codex CLI 已是 ${beforeVersion}，正在重启旧 app-server ${currentRuntimeVersion}`,
+              ),
         });
         codexUpgradeLog("installation skipped", host, {
           observedVersion: beforeVersion,
@@ -132,7 +139,10 @@ export class CodexUpgradeWorkflow {
     hostLifecycleBus.emit({
       hostId: host.id,
       status: "upgrading",
-      message: `正在为 ${hostDisplayName(host)} 准备 Codex ${supportedVersion} 官方 standalone 安装包`,
+      message: serverText(
+        `Preparing official Codex ${supportedVersion} standalone package for ${hostDisplayName(host)}`,
+        `正在为 ${hostDisplayName(host)} 准备 Codex ${supportedVersion} 官方 standalone 安装包`,
+      ),
     });
     const version = await this.upgrader.withPreparedUpgrade(
       host,
@@ -152,7 +162,10 @@ export class CodexUpgradeWorkflow {
         hostLifecycleBus.emit({
           hostId: host.id,
           status: "upgrading",
-          message: `正在离线升级 ${hostDisplayName(host)} 的远端 Codex ${beforeVersion} -> ${supportedVersion}`,
+          message: serverText(
+            `Upgrading remote Codex on ${hostDisplayName(host)} offline: ${beforeVersion} -> ${supportedVersion}`,
+            `正在离线升级 ${hostDisplayName(host)} 的远端 Codex ${beforeVersion} -> ${supportedVersion}`,
+          ),
         });
         return await install();
       },
@@ -166,7 +179,10 @@ export class CodexUpgradeWorkflow {
     hostLifecycleBus.emit({
       hostId: host.id,
       status: "restarting",
-      message: `${hostDisplayName(host)} 的远端 Codex 已升级到 ${version}，正在重启 app-server`,
+      message: serverText(
+        `Remote Codex on ${hostDisplayName(host)} upgraded to ${version}; restarting app-server`,
+        `${hostDisplayName(host)} 的远端 Codex 已升级到 ${version}，正在重启 app-server`,
+      ),
     });
     return version;
   }

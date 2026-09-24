@@ -1,5 +1,6 @@
 import type { HostRecord } from "~~/shared/types";
 import { userStore } from "../auth/users";
+import { serverText } from "../notifications/locale";
 import {
   gatewayDatabaseExists,
   gatewayDatabaseReady,
@@ -182,7 +183,10 @@ class HostRuntimeSupervisor {
         hostLifecycleBus.emit({
           hostId: event.hostId,
           status: "mfaRequired",
-          message: "SSH 连接已断开，请手动输入 MFA 验证码后重新连接",
+          message: serverText(
+            "SSH disconnected. Enter an MFA code to reconnect.",
+            "SSH 连接已断开，请手动输入 MFA 验证码后重新连接",
+          ),
         });
       });
       return;

@@ -358,6 +358,16 @@ function dismissMenu() {
 .composer-editor .cm-focused {
   outline: none;
 }
+.composer-editor .cm-cursor,
+.composer-editor .cm-dropCursor {
+  border-left-color: var(--ink);
+  border-left-width: 0.125rem;
+}
+.composer-editor:focus-within {
+  border-radius: 0.5rem;
+  outline: 0.125rem solid color-mix(in srgb, var(--primary) 40%, transparent);
+  outline-offset: 0.125rem;
+}
 .composer-editor .cm-gutters {
   display: none;
 }

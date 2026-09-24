@@ -6,6 +6,7 @@ import type { ServerNotification } from "~~/shared/types";
 import { threadGoalFromUnknown, threadHistoryTurnFromUnknown } from "~~/shared/runtime/app-server";
 import { idFromUnknown, recordFromUnknown, stringFromUnknown } from "~~/shared/utils/records";
 import { firstNonEmptyString } from "~~/shared/utils/strings";
+import { serverText } from "./locale";
 
 export function threadTurnCompletedNotification(event: GatewayEvent): ServerNotification | null {
   const canonicalEvent = event.event;
@@ -15,8 +16,12 @@ export function threadTurnCompletedNotification(event: GatewayEvent): ServerNoti
   const status = terminalTurnStatus(turn.status);
   return {
     key: `thread-terminal:${event.hostId}:${event.threadId}:turn:${turnId}:${status}`,
-    title: `${threadTitle(event.hostId, event.threadId)} · 回合已结束`,
-    body: `${hostTitle(event.hostId)} 上的会话状态：${turnStatusLabel(status)}。可以继续输入下一步。`,
+    category: "turnCompleted",
+    title: `${threadTitle(event.hostId, event.threadId)} · ${serverText("Turn finished", "回合已结束")}`,
+    body: serverText(
+      `Session on ${hostTitle(event.hostId)}: ${turnStatusLabel(status)}. Ready for your next message.`,
+      `${hostTitle(event.hostId)} 上的会话状态：${turnStatusLabel(status)}。可以继续输入下一步。`,
+    ),
     group: "Codex Gateway",
     target: notificationTarget(event),
   };
@@ -31,11 +36,12 @@ export function threadGoalCompletedNotification(event: GatewayEvent): ServerNoti
   }
   return {
     key: `thread-goal:${event.hostId}:${event.threadId}:${goal.status}:${goal.updatedAt}`,
-    title: `${threadTitle(event.hostId, event.threadId)} · 目标已结束`,
-    body: [
-      `${hostTitle(event.hostId)} 上的目标状态：${goalStatusLabel(goal.status)}。`,
-      `推进 ${formatDuration(goal.timeUsedSeconds)}，使用 ${goal.tokensUsed.toLocaleString()} tokens。`,
-    ].join(""),
+    category: "goalCompleted",
+    title: `${threadTitle(event.hostId, event.threadId)} · ${serverText("Goal finished", "目标已结束")}`,
+    body: serverText(
+      `Goal on ${hostTitle(event.hostId)}: ${goalStatusLabel(goal.status)}. Elapsed ${formatDuration(goal.timeUsedSeconds)}, used ${goal.tokensUsed.toLocaleString("en-US")} tokens.`,
+      `${hostTitle(event.hostId)} 上的目标状态：${goalStatusLabel(goal.status)}。推进 ${formatDuration(goal.timeUsedSeconds)}，使用 ${goal.tokensUsed.toLocaleString("zh-CN")} tokens。`,
+    ),
     group: "Codex Gateway",
     target: notificationTarget(event),
   };
@@ -47,8 +53,12 @@ export function threadUserInputRequestedNotification(event: GatewayEvent): Serve
     // Fallback: return a generic notification
     return {
       key: `thread-user-input:${event.hostId}:${event.threadId}:${event.id}`,
-      title: `${threadTitle(event.hostId, event.threadId)} · 等待回答`,
-      body: `${hostTitle(event.hostId)} 上的 Agent 正在等待你的回答。请打开会话查看问题。`,
+      category: "userInputRequested",
+      title: `${threadTitle(event.hostId, event.threadId)} · ${serverText("Waiting for your answer", "等待回答")}`,
+      body: serverText(
+        `The agent on ${hostTitle(event.hostId)} is waiting for your answer. Open the conversation to view the question.`,
+        `${hostTitle(event.hostId)} 上的 Agent 正在等待你的回答。请打开会话查看问题。`,
+      ),
       group: "Codex Gateway",
       target: notificationTarget(event),
     };
@@ -61,12 +71,21 @@ export function threadUserInputRequestedNotification(event: GatewayEvent): Serve
     stringFromUnknown(firstQuestion?.header),
   ]);
   const requestId = idFromUnknown(params?.itemId) ?? canonicalEvent.requestId ?? event.id;
-  const questionCount = questions.length > 1 ? `（共 ${questions.length} 个问题）` : "";
+  const questionCount =
+    questions.length > 1
+      ? serverText(` (${questions.length} questions)`, `（共 ${questions.length} 个问题）`)
+      : "";
+  const prompt =
+    question ?? serverText("Open the conversation to view the question.", "请打开会话查看问题。");
 
   return {
     key: `thread-user-input:${event.hostId}:${event.threadId}:${requestId}`,
-    title: `${threadTitle(event.hostId, event.threadId)} · 等待回答`,
-    body: `${hostTitle(event.hostId)} 上的 Agent 正在等待你的回答${questionCount}：${question ?? "请打开会话查看问题。"}`,
+    category: "userInputRequested",
+    title: `${threadTitle(event.hostId, event.threadId)} · ${serverText("Waiting for your answer", "等待回答")}`,
+    body: serverText(
+      `The agent on ${hostTitle(event.hostId)} is waiting for your answer${questionCount}: ${prompt}`,
+      `${hostTitle(event.hostId)} 上的 Agent 正在等待你的回答${questionCount}：${prompt}`,
+    ),
     group: "Codex Gateway",
     target: notificationTarget(event),
   };
@@ -114,23 +133,23 @@ function hostTitle(hostId: number) {
 
 function turnStatusLabel(status: ThreadRuntimeStatus) {
   const labels: Record<ThreadRuntimeStatus, string> = {
-    idle: "空闲",
-    running: "运行中",
-    completed: "已完成",
-    failed: "失败",
-    interrupted: "已中断",
+    idle: serverText("idle", "空闲"),
+    running: serverText("running", "运行中"),
+    completed: serverText("completed", "已完成"),
+    failed: serverText("failed", "失败"),
+    interrupted: serverText("interrupted", "已中断"),
   };
   return labels[status];
 }
 
 function goalStatusLabel(status: ThreadGoalStatus) {
   const labels: Record<ThreadGoalStatus, string> = {
-    active: "推进中",
-    paused: "已暂停",
-    blocked: "已阻塞",
-    usageLimited: "用量受限",
-    budgetLimited: "预算已用尽",
-    complete: "已完成",
+    active: serverText("active", "推进中"),
+    paused: serverText("paused", "已暂停"),
+    blocked: serverText("blocked", "已阻塞"),
+    usageLimited: serverText("usage limited", "用量受限"),
+    budgetLimited: serverText("budget exhausted", "预算已用尽"),
+    complete: serverText("completed", "已完成"),
   };
   return labels[status];
 }

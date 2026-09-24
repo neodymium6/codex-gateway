@@ -6,6 +6,7 @@ import { refreshRunningThreadsForHost } from "./running-thread-sync";
 import { runtimeLog } from "./runtime-log";
 import { activeMainThreadMonitor } from "./active-main-thread-monitor";
 import { hostMfaManager } from "../host-mfa/host-mfa-instance";
+import { serverText } from "../notifications/locale";
 
 export async function connectHostRuntime(slot: HostRuntimeSlot, isCurrent: () => boolean) {
   await runWithGatewayUser(slot.userId, async () => {
@@ -13,7 +14,10 @@ export async function connectHostRuntime(slot: HostRuntimeSlot, isCurrent: () =>
     hostLifecycleBus.emit({
       hostId: slot.hostId,
       status: "connecting",
-      message: `${slot.host.name || slot.host.sshHost} 正在建立后台连接`,
+      message: serverText(
+        `Connecting to ${slot.host.name || slot.host.sshHost} in the background`,
+        `${slot.host.name || slot.host.sshHost} 正在建立后台连接`,
+      ),
     });
     runtimeLog("host background connect", {
       userId: slot.userId,
@@ -58,7 +62,7 @@ export function publishHostRuntimeFailure(slot: HostRuntimeSlot, error: unknown)
       hostId: slot.hostId,
       status: hostMfaManager.isMfaHost(slot.userId, slot.hostId) ? "mfaRequired" : "failed",
       message: hostMfaManager.isMfaHost(slot.userId, slot.hostId)
-        ? "需要手动输入 MFA 验证码后重新连接"
+        ? serverText("Enter an MFA code to reconnect", "需要手动输入 MFA 验证码后重新连接")
         : messageFromError(error),
     });
   });

@@ -211,7 +211,7 @@ Environment variables:
 | `CODEX_GATEWAY_AUTH_MODE` | No | `password` (default) or explicitly opted-in `trusted-network`. |
 | `CODEX_GATEWAY_TRUSTED_USER` | Trusted network only | Existing active Gateway username used for automatic sign-in. |
 | `CODEX_GATEWAY_TRUSTED_ORIGINS` | Trusted network only | Comma-separated exact HTTP(S) origins, including ports when non-default; no paths or wildcards. |
-| `NUXT_PUBLIC_DEFAULT_LOCALE` | No | `zh` (default) or `en`. An explicit browser language selection persists in a cookie. |
+| `NUXT_PUBLIC_DEFAULT_LOCALE` | No | `zh` (default) or `en`. Also selects server-generated notification and host status text. An explicit browser language selection persists in a cookie for frontend labels only. |
 | `HOST` | No | Nuxt listen host. Docker uses `0.0.0.0`. |
 | `PORT` | No | Nuxt listen port. Docker uses `3000`. |
 | `BROWSER_PREVIEW_DOMAIN` | Browser preview | Parent domain for isolated preview origins; configure wildcard DNS for `p-*.your-domain`. |
@@ -230,6 +230,16 @@ pnpm user:create <username> <password>
 `CODEX_GATEWAY_CONFIG_SECRET` encrypts stored connection config. Use a stable, sufficiently long secret in production. Changing it makes existing encrypted config unreadable.
 
 ## Security Model
+
+### Browser notification controls
+
+Settings → Notifications provides per-user switches for turn completion, goal
+completion, user questions, tmux completion and host upgrade/restart pop-ups.
+All default to enabled and persist in server-side config as
+`notifications.browser.{turnCompleted,goalCompleted,userInputRequested,tmuxCompleted,hostLifecycle}`.
+Disabling them leaves errors, question/approval cards, host status and tmux state
+updates intact. Bark push is configured separately. Notification text and host
+status tooltips use `NUXT_PUBLIC_DEFAULT_LOCALE`, including when no browser is open.
 
 ### Optional trusted-network sign-in
 

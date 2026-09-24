@@ -107,6 +107,7 @@ export function registerGatewayLifecycleSubscribers() {
     };
     const key = `${event.hostId}:${event.status}:${event.message}`;
     if (
+      useGatewayConfigStore().gatewayConfig.notifications.browser.hostLifecycle &&
       (event.status === "upgrading" || event.status === "restarting") &&
       !lifecycleNotificationKeys.has(key)
     ) {

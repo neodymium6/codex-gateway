@@ -1,4 +1,5 @@
 import { hostLifecycleBus } from "../../state/host-events";
+import { serverText } from "../../notifications/locale";
 import { parseCodexVersion, SUPPORTED_CODEX_VERSION } from "./codex-version";
 import { isRecoverableCodexInstallError } from "./codex-install-errors";
 import { codexRemoteVersionPayload, remoteLoginShellCommand } from "../ssh/remote-command";
@@ -33,7 +34,10 @@ export class CodexVersionChecker {
       hostLifecycleBus.emit({
         hostId: host.id,
         status: "upgrading",
-        message: `${hostDisplayName(host)} 的远端 Codex 安装缺失或损坏，正在重新安装 ${SUPPORTED_CODEX_VERSION}`,
+        message: serverText(
+          `Remote Codex on ${hostDisplayName(host)} is missing or damaged; reinstalling ${SUPPORTED_CODEX_VERSION}`,
+          `${hostDisplayName(host)} 的远端 Codex 安装缺失或损坏，正在重新安装 ${SUPPORTED_CODEX_VERSION}`,
+        ),
       });
       return { version: "0.0.0", installationLayout: "npm-or-external" } as const;
     }

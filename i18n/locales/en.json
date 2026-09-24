@@ -342,6 +342,15 @@
     "configJson": "Config JSON",
     "configJsonPlaceholder": "Current server config JSON. Edit it directly, then import.",
     "notificationSettings": "Notifications",
+    "browserNotifications": "Browser notifications",
+    "browserNotificationsDescription": "Choose automatic pop-up notifications. Errors, approval requests and question cards remain visible. These settings do not change Bark push delivery.",
+    "browserNotificationCategories": {
+      "turnCompleted": "Turn finished (including failures and interruptions)",
+      "goalCompleted": "Goal finished or blocked",
+      "userInputRequested": "Waiting for your answer",
+      "tmuxCompleted": "Tmux monitor finished",
+      "hostLifecycle": "Host upgrade and restart"
+    },
     "barkNotifications": "Bark notifications",
     "barkNotificationsDescription": "The server sends a Bark push when a Codex turn finishes. Phone notifications still work after the browser is closed.",
     "enableBark": "Enable Bark",
