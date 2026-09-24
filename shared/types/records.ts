@@ -1,4 +1,5 @@
 export type HostAuthMode = "agent" | "privateKey" | "password";
+export type CodexRuntimeMode = "managed" | "external";
 
 export interface HostRecord {
   id: number;
@@ -7,6 +8,7 @@ export interface HostRecord {
   username: string | null;
   port: number | null;
   authMode: HostAuthMode;
+  codexRuntimeMode?: CodexRuntimeMode;
   privateKeyPath: string | null;
   privateKey?: string | null;
   password?: string | null;
@@ -33,6 +35,7 @@ export interface HostCreateInput {
   username?: string | null;
   port?: number | null;
   authMode: HostAuthMode;
+  codexRuntimeMode?: CodexRuntimeMode;
   privateKeyPath?: string | null;
   privateKey?: string | null;
   password?: string | null;

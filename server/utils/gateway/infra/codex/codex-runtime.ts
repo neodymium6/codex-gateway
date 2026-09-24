@@ -37,6 +37,8 @@ export class CodexRuntimeService {
   }
 
   async ensureCodexVersion(host: HostWithSecret): Promise<RemoteCodexVersionState> {
+    // Never share an in-flight managed check with a newly external connection.
+    if (host.codexRuntimeMode === "external") return await this.checkExternalRuntime(host);
     const key = this.hostKey(host.id);
     const existing = this.versionChecks.get(key);
     if (existing) {
@@ -72,6 +74,7 @@ export class CodexRuntimeService {
   }
 
   async checkAndUpgradeCodex(host: HostWithSecret): Promise<RemoteCodexVersionState> {
+    if (host.codexRuntimeMode === "external") return await this.checkExternalRuntime(host);
     try {
       hostLifecycleBus.emit({
         hostId: host.id,
@@ -183,6 +186,7 @@ export class CodexRuntimeService {
   }
 
   completeDeferredUpgrade(host: HostWithSecret) {
+    if (host.codexRuntimeMode === "external") return Promise.resolve(false);
     const key = this.hostKey(host.id);
     const pending = this.deferredUpgradeChecks.get(key);
     if (pending) return pending;
@@ -200,6 +204,7 @@ export class CodexRuntimeService {
     host: HostWithSecret,
     error: unknown,
   ): Promise<RemoteCodexVersionState> {
+    if (host.codexRuntimeMode === "external") throw error;
     if (!isRecoverableCodexInstallError(error)) {
       throw error;
     }
@@ -211,6 +216,40 @@ export class CodexRuntimeService {
     });
 
     return await this.upgradeWorkflow.repair(host);
+  }
+
+  private async checkExternalRuntime(host: HostWithSecret): Promise<RemoteCodexVersionState> {
+    // Read only: missing/broken installations must not enter the repair workflow.
+    const installed = await this.versionChecker.readVersion(host);
+    const supportedVersion = SUPPORTED_CODEX_VERSION;
+    if (!isCodexVersionAtLeast(installed.version, supportedVersion)) {
+      throw new Error(
+        `Externally managed Codex ${installed.version} requires ${supportedVersion} or newer. Update it outside Gateway.`,
+      );
+    }
+    const runtime = await this.appServerRuntime.readState(host);
+    if (!runtime.running) {
+      throw new Error(
+        "Externally managed Codex app-server is not running. Start it outside Gateway.",
+      );
+    }
+    if (runtime.versionError !== null || runtime.appServerVersion === null) {
+      throw new Error(
+        "Cannot verify the externally managed app-server version. Check the server outside Gateway; no repair was attempted.",
+      );
+    }
+    if (!isCodexVersionAtLeast(runtime.appServerVersion, supportedVersion)) {
+      throw new Error(
+        `Externally managed app-server ${runtime.appServerVersion} requires ${supportedVersion} or newer. Update and restart it outside Gateway.`,
+      );
+    }
+    return {
+      ...installed,
+      appServerVersion: runtime.appServerVersion,
+      supportedVersion,
+      beforeVersion: installed.version,
+      upgraded: false,
+    };
   }
 
   private async stopIdleOutdatedRuntime(host: HostWithSecret) {

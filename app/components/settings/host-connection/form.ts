@@ -6,6 +6,7 @@ export interface HostConnectionFormValue {
   username: string;
   port: string;
   authMode: HostRecord["authMode"];
+  codexRuntimeMode: "managed" | "external";
   privateKeyPath: string;
   privateKey: string;
   password: string;
@@ -19,6 +20,7 @@ export function emptyHostConnectionForm(): HostConnectionFormValue {
     username: "",
     port: "",
     authMode: "agent",
+    codexRuntimeMode: "managed",
     privateKeyPath: "",
     privateKey: "",
     password: "",
@@ -33,6 +35,7 @@ export function hostConnectionFormFromRecord(host: HostRecord): HostConnectionFo
     username: host.username ?? "",
     port: host.port == null ? "" : String(host.port),
     authMode: host.authMode,
+    codexRuntimeMode: host.codexRuntimeMode ?? "managed",
     privateKeyPath: host.privateKeyPath ?? "",
     privateKey: host.privateKey ?? "",
     password: host.password ?? "",

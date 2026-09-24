@@ -32,14 +32,15 @@ cleanup() {
   if [ "$status" -ne 0 ]; then
     "${compose[@]}" logs --no-color \
       gateway-under-test ssh-target ssh-target-legacy-node ssh-target-npm-codex \
-      ssh-target-mfa >&2 || true
+      ssh-target-mfa ssh-target-external ssh-target-external-missing ssh-target-external-old >&2 || true
   fi
   "${compose[@]}" down --remove-orphans >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
 "${compose[@]}" build --quiet \
-  build-runner ssh-target ssh-target-legacy-node ssh-target-npm-codex ssh-target-mfa
+  build-runner ssh-target ssh-target-legacy-node ssh-target-npm-codex ssh-target-mfa \
+  ssh-target-external ssh-target-external-missing ssh-target-external-old
 # Build, application server, and browser runner use separate 2 GiB cgroups. Sharing only the
 # gateway network namespace preserves the production-like nip.io subdomain routing used by browser
 # preview tests without coupling process memory.

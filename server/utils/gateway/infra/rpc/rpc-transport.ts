@@ -8,6 +8,7 @@ import {
 } from "../ssh/remote-command";
 import { createRpcTransportError, type RpcTransportCloseDetail } from "./rpc-errors";
 import { rawWebSocketDataToString } from "../ws/raw-data";
+import { assertCodexManagementAllowed } from "../codex/codex-management-policy";
 
 export interface CodexRpcTransportOptions {
   requireExistingAppServer: boolean;
@@ -33,6 +34,7 @@ export class CodexRpcTransport {
   ) {}
 
   async connect() {
+    if (!this.options.requireExistingAppServer) assertCodexManagementAllowed(this.host);
     this.stderrBuffer = "";
     this.closed = false;
     const channel = await sshConnections.execChannel(

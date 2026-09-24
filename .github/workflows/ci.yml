@@ -46,4 +46,4 @@ jobs:
           E2E_CODEX_HOME: ${{ runner.temp }}/codex-e2e-empty
         run: |
           mkdir -p "$E2E_CODEX_HOME"
-          tests/e2e/run-in-containers.sh ci-smoke.spec.ts i18n.spec.ts --project=chromium
+          tests/e2e/run-in-containers.sh ci-smoke.spec.ts i18n.spec.ts external-runtime.spec.ts --project=chromium

@@ -10,6 +10,7 @@ import type { SshConnectionPool } from "../ssh/ssh-connection";
 import type { CommandResult, HostWithSecret } from "../ssh/ssh-types";
 import { codexUpgradeError, codexUpgradeLog } from "./codex-upgrade-log";
 import { CodexUpgradeResources } from "./codex-upgrade-resources";
+import { assertCodexManagementAllowed } from "./codex-management-policy";
 
 const UPGRADE_IDLE_TIMEOUT_MS = 90_000;
 const UPGRADE_TOTAL_TIMEOUT_MS = 10 * 60_000;
@@ -47,6 +48,7 @@ export class CodexUpgrader {
     attempt: number,
     callback: (install: () => Promise<string>) => Promise<T>,
   ) {
+    assertCodexManagementAllowed(host);
     if (resources.artifactLease !== null) {
       const artifacts = resources.artifactLease.artifacts;
       return await callback(() => this.installOnce(host, version, artifacts, attempt, resources));
@@ -93,6 +95,7 @@ export class CodexUpgrader {
     attempt: number,
     resources: CodexUpgradeResources,
   ) {
+    assertCodexManagementAllowed(host);
     const attemptStartedAt = Date.now();
     codexUpgradeLog("installation attempt started", host, { targetVersion: version, attempt });
     const stagePath = await resources.stage();
@@ -113,6 +116,7 @@ export class CodexUpgrader {
         targetVersion: version,
         attempt,
       });
+      assertCodexManagementAllowed(host);
       const result = await this.execInstallCommand(
         host,
         remoteLoginShellCommand(

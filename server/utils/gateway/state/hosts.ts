@@ -19,6 +19,7 @@ function normalizeHost(input: HostCreateInput, id = nextId(currentGatewayMemoryS
     username: trimmedOrNull(input.username),
     port: input.port ?? null,
     authMode: input.authMode,
+    codexRuntimeMode: input.codexRuntimeMode ?? "managed",
     privateKeyPath: trimmedOrNull(input.privateKeyPath),
     privateKey: input.privateKey ?? null,
     password: input.password ?? null,

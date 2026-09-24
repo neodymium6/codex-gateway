@@ -2,6 +2,7 @@ import { hostLifecycleBus } from "../state/host-events";
 import { codexRemoteAppServerVerifyPayload, remoteLoginShellCommand } from "./ssh/remote-command";
 import type { SshConnectionPool } from "./ssh/ssh-connection";
 import type { HostWithSecret, RemoteCodexVersionState } from "./ssh/ssh-types";
+import { assertCodexManagementAllowed } from "./codex/codex-management-policy";
 
 export type EnsureCodexVersion = (host: HostWithSecret) => Promise<RemoteCodexVersionState>;
 
@@ -13,9 +14,12 @@ export class HostVerifyService {
 
   async verify(host: HostWithSecret) {
     const versionState = await this.ensureCodexVersion(host);
+    if (host.codexRuntimeMode !== "external") assertCodexManagementAllowed(host);
     const probe = await this.ssh.exec(
       host,
-      remoteLoginShellCommand(codexRemoteAppServerVerifyPayload()),
+      remoteLoginShellCommand(
+        codexRemoteAppServerVerifyPayload({ configure: host.codexRuntimeMode !== "external" }),
+      ),
     );
     if (probe.code !== 0) {
       return {

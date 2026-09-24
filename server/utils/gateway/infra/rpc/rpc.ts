@@ -12,6 +12,7 @@ import {
 } from "./rpc-transport";
 import { type RpcTransportCloseDetail } from "./rpc-errors";
 import { parseInitializeResponse } from "~~/shared/runtime/app-server";
+import { assertCodexManagementAllowed } from "../codex/codex-management-policy";
 
 export type RpcNotificationHandler = (message: RpcEnvelope) => void;
 export type RpcResponseParser<T> = (value: unknown) => T;
@@ -83,7 +84,7 @@ export class CodexRpcClient extends EventEmitter<CodexRpcClientEvents> {
       await this.connectRemoteProxyWebSocket(generation);
     } catch (error) {
       this.assertCurrentConnection(generation);
-      if (this.options.skipVersionCheck === true) {
+      if (this.options.skipVersionCheck === true || this.host.codexRuntimeMode === "external") {
         throw error;
       }
       versionState = await codexRuntime.repairAfterProxyFailure(this.host, error);
@@ -116,11 +117,14 @@ export class CodexRpcClient extends EventEmitter<CodexRpcClientEvents> {
     // initialization lets the daemon atomically project old JSONL into its paginated store, while
     // its own journal and busy retry policy handle active desktop writers. Gateway must not parse
     // or rewrite rollout files itself, because that would create a second history implementation.
-    await this.request(
-      "experimentalFeature/enablement/set",
-      { enablement: { background_paginated_rollout_migration: true } },
-      30_000,
-    );
+    if (this.options.skipVersionCheck !== true && this.host.codexRuntimeMode !== "external") {
+      assertCodexManagementAllowed(this.host);
+      await this.request(
+        "experimentalFeature/enablement/set",
+        { enablement: { background_paginated_rollout_migration: true } },
+        30_000,
+      );
+    }
     this.initialized = true;
     hostLifecycleBus.emit({
       hostId: this.host.id,
@@ -220,7 +224,8 @@ export class CodexRpcClient extends EventEmitter<CodexRpcClientEvents> {
   private async connectRemoteProxyWebSocket(generation: number) {
     this.assertCurrentConnection(generation);
     const transportOptions: CodexRpcTransportOptions = {
-      requireExistingAppServer: this.options.requireExistingAppServer === true,
+      requireExistingAppServer:
+        this.host.codexRuntimeMode === "external" || this.options.requireExistingAppServer === true,
       onMessage: (payload) => this.handleMessage(payload),
       onStderr: (text) => this.emit("stderr", text),
       // A failed upgrade/retry attempt can close after its replacement transport is already live.

@@ -33,6 +33,7 @@ export const codexProviderAdapter: ProviderAdapter = {
     return true;
   },
   handleNotification(client: AgentRpcClient, host: HostRecord, message: RpcEnvelope) {
+    if (host.codexRuntimeMode === "external") return;
     if (message.method !== "turn/completed" || !clientHasDeferredUpgrade(client)) return;
     void codexRuntime
       .completeDeferredUpgrade(host)
