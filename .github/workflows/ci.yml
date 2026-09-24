@@ -76,3 +76,19 @@ jobs:
         run: |
           docker run --rm --user 1000:1000 --read-only --entrypoint node gateway-nonroot-test \
             -e 'const fs=require("node:fs"); for (const path of ["/app/.output/public/favicon.ico", "/app/.output/public/site.webmanifest", "/app/scripts/create-user.mjs"]) fs.readFileSync(path);'
+      - name: Check production HTTP assets and fail-closed missing user
+        run: |
+          container=$(docker run -d --user 1000:1000 --read-only \
+            --tmpfs /data:uid=1000,gid=1000 --tmpfs /tmp \
+            -p 127.0.0.1:3000:3000 \
+            -e CODEX_GATEWAY_CONFIG_SECRET=ci-only-encryption-key \
+            -e CODEX_GATEWAY_DB_PATH=/data/gateway.db \
+            -e CODEX_GATEWAY_AUTH_MODE=trusted-network \
+            -e CODEX_GATEWAY_TRUSTED_USER=missing \
+            -e CODEX_GATEWAY_TRUSTED_ORIGINS=http://127.0.0.1:3000 \
+            gateway-nonroot-test)
+          trap 'docker stop "$container" >/dev/null; docker rm "$container" >/dev/null' EXIT
+          curl --fail --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:3000/site.webmanifest
+          curl --fail --output /dev/null http://127.0.0.1:3000/favicon.ico
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+            -H 'Origin: http://127.0.0.1:3000' http://127.0.0.1:3000/api/auth/bootstrap)" = 403
