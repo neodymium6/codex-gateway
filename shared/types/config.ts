@@ -18,7 +18,16 @@ export interface BarkNotificationSettings {
 }
 
 export interface GatewayNotificationSettings {
+  browser: BrowserNotificationSettings;
   bark: BarkNotificationSettings;
+}
+
+export interface BrowserNotificationSettings {
+  turnCompleted: boolean;
+  goalCompleted: boolean;
+  userInputRequested: boolean;
+  tmuxCompleted: boolean;
+  hostLifecycle: boolean;
 }
 
 export interface GatewayConfig {

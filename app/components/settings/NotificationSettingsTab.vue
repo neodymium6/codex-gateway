@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { BellIcon, Loader2Icon } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
-import type { GatewayNotificationSettings } from "~~/shared/types";
+import type { BrowserNotificationSettings, GatewayNotificationSettings } from "~~/shared/types";
 import { Button } from "@codex-gateway/ui/button";
 import { Input } from "@codex-gateway/ui/input";
 import { Label } from "@codex-gateway/ui/label";
@@ -16,6 +16,13 @@ const errorLabels = computed(() => errorMessageLabels(t));
 const saving = ref(false);
 const error = ref("");
 const form = ref<GatewayNotificationSettings>(normalizeNotificationSettings());
+const browserCategories: (keyof BrowserNotificationSettings)[] = [
+  "turnCompleted",
+  "goalCompleted",
+  "userInputRequested",
+  "tmuxCompleted",
+  "hostLifecycle",
+];
 const barkGroup = computed({
   get: () => form.value.bark.group ?? "",
   set: (value: string | number) => {
@@ -50,6 +57,22 @@ async function saveSettings() {
 
 <template>
   <div class="max-w-2xl space-y-5">
+    <section class="space-y-3" data-testid="browser-notification-settings">
+      <h3 class="font-medium">{{ t("app.browserNotifications") }}</h3>
+      <p class="text-sm text-ink-secondary">{{ t("app.browserNotificationsDescription") }}</p>
+      <div class="space-y-4 rounded-xl border border-hairline bg-canvas-soft/70 p-4">
+        <div
+          v-for="category in browserCategories"
+          :key="category"
+          class="flex items-center justify-between gap-4"
+        >
+          <Label :for="`notify-${category}`">{{
+            t(`app.browserNotificationCategories.${category}`)
+          }}</Label>
+          <Switch :id="`notify-${category}`" v-model="form.browser[category]" />
+        </div>
+      </div>
+    </section>
     <div class="space-y-1">
       <div class="flex items-center gap-2 font-medium">
         <BellIcon class="size-4 text-ink-muted" />

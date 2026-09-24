@@ -3,6 +3,7 @@ import { notificationCenter } from "../notifications/notification-center";
 import { TmuxMonitorRepository } from "./repository";
 import type { StoredTmuxMonitor } from "./types";
 import { firstNonEmptyString } from "~~/shared/utils/strings";
+import { serverText } from "../notifications/locale";
 
 export class TmuxMonitorNotifier {
   private readonly pendingMonitorIds = new Set<number>();
@@ -18,12 +19,13 @@ export class TmuxMonitorNotifier {
     try {
       await notificationCenter.publish({
         key: `tmux-monitor:${monitor.userId}:${monitor.id}:completed`,
-        title: `Tmux 任务已结束 · ${firstNonEmptyString([host.name, host.sshHost]) ?? String(host.id)} · ${monitor.sessionName}`,
+        category: "tmuxCompleted",
+        title: `${serverText("Tmux task finished", "Tmux 任务已结束")} · ${firstNonEmptyString([host.name, host.sshHost]) ?? String(host.id)} · ${monitor.sessionName}`,
         body: [
-          `Host：${firstNonEmptyString([host.name, host.sshHost]) ?? String(host.id)}`,
-          `Thread：${threadLabel(monitor)}`,
-          `Tmux：${monitor.sessionName}`,
-          `状态：${reasonLabel(monitor)}`,
+          `${serverText("Host: ", "Host：")}${firstNonEmptyString([host.name, host.sshHost]) ?? String(host.id)}`,
+          `${serverText("Thread: ", "Thread：")}${threadLabel(monitor)}`,
+          `${serverText("Tmux: ", "Tmux：")}${monitor.sessionName}`,
+          `${serverText("Status: ", "状态：")}${reasonLabel(monitor)}`,
         ].join("\n"),
         group: "tmux-monitor",
         target: {
@@ -45,22 +47,22 @@ export class TmuxMonitorNotifier {
 }
 
 function threadLabel(monitor: StoredTmuxMonitor) {
-  if (monitor.threadId === null) return "主机级监控";
+  if (monitor.threadId === null) return serverText("Host-level monitor", "主机级监控");
   return firstNonEmptyString([monitor.threadTitle, monitor.threadId]) ?? monitor.threadId;
 }
 
 function reasonLabel(monitor: StoredTmuxMonitor) {
   switch (monitor.completionReason) {
     case "returnedToShell":
-      return "已返回 Shell";
+      return serverText("Returned to shell", "已返回 Shell");
     case "sessionExited":
-      return "Session 已退出";
+      return serverText("Session exited", "Session 已退出");
     case "paneExited":
-      return "Pane 已退出";
+      return serverText("Pane exited", "Pane 已退出");
     case "paneReplaced":
-      return "Pane 已被替换";
+      return serverText("Pane replaced", "Pane 已被替换");
     case "cancelled":
     case null:
-      return "监控已完成";
+      return serverText("Monitor completed", "监控已完成");
   }
 }

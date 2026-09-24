@@ -342,6 +342,15 @@
     "configJson": "配置 JSON",
     "configJsonPlaceholder": "当前服务端配置 JSON，可直接编辑后导入",
     "notificationSettings": "通知",
+    "browserNotifications": "浏览器通知",
+    "browserNotificationsDescription": "选择自动弹出通知。错误、审批请求和问题卡片仍然显示。这些设置不影响 Bark 推送。",
+    "browserNotificationCategories": {
+      "turnCompleted": "回合结束（包括失败和中断）",
+      "goalCompleted": "目标结束或阻塞",
+      "userInputRequested": "等待回答",
+      "tmuxCompleted": "Tmux 监控结束",
+      "hostLifecycle": "主机升级和重启"
+    },
     "barkNotifications": "Bark 通知",
     "barkNotificationsDescription": "当一个 Codex turn 结束时，由服务器向 Bark 发送通知。浏览器关闭后仍可收到手机推送。",
     "enableBark": "启用 Bark",

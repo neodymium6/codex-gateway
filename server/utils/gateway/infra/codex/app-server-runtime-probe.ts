@@ -12,6 +12,7 @@ import { parseLoadedThreadsPage } from "~~/shared/runtime/app-server";
 import { recordFromUnknown } from "~~/shared/utils/records";
 import { firstNonEmptyString } from "~~/shared/utils/strings";
 import { assertCodexManagementAllowed } from "./codex-management-policy";
+import { serverText } from "../../notifications/locale";
 
 export interface AppServerRuntimeState {
   running: boolean;
@@ -62,7 +63,10 @@ export class AppServerRuntimeProbe {
     hostLifecycleBus.emit({
       hostId: host.id,
       status: "restarting",
-      message: `正在停止 ${hostDisplayName(host)} 的旧远端 Codex app-server`,
+      message: serverText(
+        `Stopping the old remote Codex app-server on ${hostDisplayName(host)}`,
+        `正在停止 ${hostDisplayName(host)} 的旧远端 Codex app-server`,
+      ),
     });
     const result = await this.ssh.exec(
       host,

@@ -6,6 +6,7 @@ import { useGatewayTerminalStore } from "@/stores/gateway-terminal";
 import { useGatewayHostMetricsDataStore } from "@/stores/gateway-host-metrics/data";
 import { useGatewayTmuxStore } from "@/stores/gateway-tmux";
 import { useGatewayHostMfaStore } from "@/stores/gateway-host-mfa";
+import { useGatewayConfigStore } from "@/stores/gateway-config";
 import { gatewayDomainEvents } from "../domain-events";
 import { notificationAction, projectPublishedNotification } from "../notifications/actions";
 
@@ -71,6 +72,7 @@ export function registerRealtimeResourceSubscribers() {
   });
   gatewayDomainEvents.on("realtime-notification-published", ({ notification, actionLabel }) => {
     projectPublishedNotification(notification);
+    if (!useGatewayConfigStore().gatewayConfig.notifications.browser[notification.category]) return;
     const action = notificationAction(notification);
     toast.info(notification.title, {
       id: notification.key,

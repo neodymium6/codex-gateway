@@ -83,6 +83,7 @@ export type {
 export type { ServerNotification, ServerNotificationTarget } from "./types/notifications";
 export type {
   BarkNotificationSettings,
+  BrowserNotificationSettings,
   GatewayConfig,
   GatewayNotificationSettings,
   PinnedThreadRecord,

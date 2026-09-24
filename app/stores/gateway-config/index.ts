@@ -68,10 +68,10 @@ export const useGatewayConfigStore = defineStore("gateway-config", () => {
 
   async function saveNotificationSettings(notifications: GatewayNotificationSettings) {
     const sessionIsCurrent = captureSessionEpoch();
-    gatewayConfig.value.notifications = normalizeNotificationSettings(notifications);
+    const settings = normalizeNotificationSettings(notifications);
     const result = await gatewayApi<GatewayConfig>("/api/config/notifications", {
       method: "POST",
-      body: { notifications: gatewayConfig.value.notifications },
+      body: { notifications: settings },
     });
     if (!sessionIsCurrent()) return false;
     applyConfig(result);

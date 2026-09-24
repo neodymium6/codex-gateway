@@ -222,6 +222,7 @@ const notificationTargetSchema = z.discriminatedUnion("kind", [
 ]);
 const notificationSchema = z
   .object({
+    category: z.enum(["turnCompleted", "goalCompleted", "userInputRequested", "tmuxCompleted"]),
     key: nonEmptyString,
     title: z.string(),
     body: z.string(),

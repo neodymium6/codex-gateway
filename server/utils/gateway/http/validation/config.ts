@@ -1,6 +1,10 @@
 import { z } from "zod";
 import type { GatewayConfig } from "~~/shared/types";
-import { DEFAULT_BARK_GROUP, DEFAULT_BARK_SERVER_URL } from "~~/shared/config";
+import {
+  DEFAULT_BARK_GROUP,
+  DEFAULT_BARK_SERVER_URL,
+  defaultBrowserNotificationSettings,
+} from "~~/shared/config";
 import { trimmedOrFallback, trimmedOrNull } from "~~/shared/utils/strings";
 import { optionalPositiveInt } from "./common";
 import { hostBaseSchema, validateHostProxy } from "./hosts-projects";
@@ -19,6 +23,16 @@ export const pinnedThreadSchema = z
 
 export const notificationSettingsSchema = z
   .object({
+    browser: z
+      .object({
+        turnCompleted: z.boolean().default(true),
+        goalCompleted: z.boolean().default(true),
+        userInputRequested: z.boolean().default(true),
+        tmuxCompleted: z.boolean().default(true),
+        hostLifecycle: z.boolean().default(true),
+      })
+      .strict()
+      .default(defaultBrowserNotificationSettings),
     bark: z
       .object({
         enabled: z.boolean().default(false),
@@ -66,14 +80,7 @@ export const gatewayConfigSchema = z
       )
       .default([]),
     pinnedThreads: z.array(pinnedThreadSchema).default([]),
-    notifications: notificationSettingsSchema.default({
-      bark: {
-        enabled: false,
-        serverUrl: DEFAULT_BARK_SERVER_URL,
-        deviceKey: "",
-        group: DEFAULT_BARK_GROUP,
-      },
-    }),
+    notifications: notificationSettingsSchema.default(() => notificationSettingsSchema.parse({})),
   })
   .strict();
 
@@ -117,6 +124,7 @@ export function parseGatewayConfig(body: unknown): GatewayConfig {
       updatedAt: thread.updatedAt ?? null,
     })),
     notifications: {
+      browser: input.notifications.browser,
       bark: {
         enabled: input.notifications.bark.enabled,
         serverUrl: trimmedOrFallback(input.notifications.bark.serverUrl, DEFAULT_BARK_SERVER_URL),

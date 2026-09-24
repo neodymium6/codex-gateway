@@ -15,6 +15,8 @@ test("trusted browser signs in automatically, uses bearer auth and renews a revo
   await page.goto("/");
   await expect(page.getByTestId("desktop-layout")).toBeVisible();
   await expect(page.getByTestId("login-form")).toBeHidden();
+  await expect(page.getByTestId("open-terminal-button")).toHaveAttribute("title", "Open terminal");
+  await expect(page.getByTestId("open-browser-button")).toHaveAttribute("title", "Open browser");
   const config = await authenticatedFetch(page, { url: "/api/config/export" }, (value) =>
     z.object({ version: z.number() }).loose().parse(value),
   );
@@ -24,6 +26,7 @@ test("trusted browser signs in automatically, uses bearer auth and renews a revo
   expect(token).toBeTruthy();
   await page.reload();
   await expect(page.getByTestId("desktop-layout")).toBeVisible();
+  await expect(page.getByTestId("open-terminal-button")).toHaveAttribute("title", "Open terminal");
   await expect
     .poll(() => page.evaluate(() => window.__codexGatewayE2e?.realtime.readyCount ?? 0))
     .toBeGreaterThan(0);
@@ -87,6 +90,9 @@ test("bootstrap rejects untrusted origins and cannot choose another identity", a
 test("English is deployment-configurable and an explicit language choice survives reload", async ({
   page,
 }) => {
+  const serverHtml = await (await page.request.get("/")).text();
+  expect(serverHtml).toContain('title="Open terminal"');
+  expect(serverHtml).not.toContain('title="打开终端"');
   await page.goto("/");
   await expect(page.getByTestId("desktop-layout")).toBeVisible();
   await page.getByTestId("settings-toggle").click();
@@ -97,6 +103,7 @@ test("English is deployment-configurable and an explicit language choice survive
   await expect(page.getByRole("tab", { name: "外观" })).toBeVisible();
   await page.reload();
   await expect(page.getByTestId("desktop-layout")).toBeVisible();
+  await expect(page.getByTestId("open-terminal-button")).toHaveAttribute("title", "打开终端");
   await page.getByTestId("settings-toggle").click();
   await expect(page.getByRole("tab", { name: "外观" })).toBeVisible();
 });
