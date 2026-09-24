@@ -42,6 +42,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=build /app/.output ./.output
 COPY --from=build /app/scripts ./scripts
+RUN chmod -R a+rX /app/.output /app/scripts
 EXPOSE 3000
 ENTRYPOINT ["/usr/bin/tini", "--"]
 # The 1 GiB container also hosts SSH/TLS/native buffers. Keep V8 old-space bounded to leave room

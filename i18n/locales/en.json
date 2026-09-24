@@ -1,5 +1,6 @@
 {
   "app": {
+    "authBootstrapFailed": "Could not initialize sign-in. Check the Gateway authentication configuration and reload.",
     "newChat": "New chat",
     "loginTitle": "Sign in to Codex Gateway",
     "loginDescription": "Use the account created by the administrator. Connection config is encrypted on the server.",

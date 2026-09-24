@@ -12,7 +12,9 @@ if [ ! -r /proc/stat ] || [ ! -r /proc/meminfo ] || [ ! -r /proc/net/dev ] || [ 
   exit 0
 fi
 export LC_ALL=C
-sampled_at="$(date +%s%3N 2>/dev/null || printf '%s000' "$(date +%s)")"
+# Millisecond-width %N is not portable (some date implementations ignore its
+# width and return nanoseconds successfully). Whole seconds suffice for polling.
+sampled_at="$(date +%s)000"
 printf '@@BEGIN\t%s\n' "$sampled_at"
 printf '@@CPU\n'
 sed -n '1p' /proc/stat

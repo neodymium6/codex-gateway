@@ -4,6 +4,8 @@ import { authenticatedFetch, openApp } from "./helpers/app";
 
 test("requires bearer auth for protected HTTP APIs", async ({ page }) => {
   await openApp(page);
+  const bootstrap = await page.request.post("/api/auth/bootstrap", { data: {} });
+  expect(await bootstrap.json()).toEqual({ mode: "password" });
   const unauthorized = await page.evaluate(async () => {
     const response = await fetch("/api/config/export");
     return {

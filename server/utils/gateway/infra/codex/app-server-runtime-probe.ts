@@ -1,5 +1,5 @@
 import { hostLifecycleBus } from "../../state/host-events";
-import { parseCodexVersion } from "./codex-version";
+import { parseAppServerVersion } from "./codex-version";
 import {
   codexRemoteAppServerRuntimeStatePayload,
   codexRemoteTerminateUnmanagedAppServerPayload,
@@ -96,7 +96,7 @@ export class AppServerRuntimeProbe {
       if (userAgent === null || userAgent === undefined || userAgent.length === 0) {
         return { version: null, error: null };
       }
-      const parsed = parseCodexVersion(userAgent);
+      const parsed = parseAppServerVersion(userAgent);
       if (parsed === null) {
         return {
           version: null,
