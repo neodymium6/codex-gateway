@@ -244,6 +244,35 @@ The compose service exposes container port `3000` only to Docker networks. Put i
 
 Remote Browser panels use isolated origins such as `p-<hmac>.example.com`. Configure wildcard DNS for `p-*.example.com` and route those hosts to the same Codex Gateway Nitro port (`3000`). The reverse proxy must preserve the Host header and WebSocket upgrades. No second listener or published container port is required. Upstream `Content-Security-Policy` and `X-Frame-Options` are preserved, so applications that prohibit embedding remain blocked by the browser.
 
+## Externally Managed Codex (Fork Feature)
+
+In the Host form, choose **Externally managed (connect only)** to use a Codex
+installation and app-server managed outside Gateway, for example with Nix and
+systemd. JSON configuration uses `"codexRuntimeMode": "external"`; omitted values
+retain the existing `managed` behavior.
+
+Provision the CLI in the SSH login environment and start its app-server outside
+Gateway with `codex app-server --listen unix://`. The CLI and server must both meet
+`SUPPORTED_CODEX_VERSION`. Gateway uses the existing SSH transport and default
+control socket under `CODEX_HOME` (or `~/.codex`); this is not a direct WebSocket
+URL setting. Ensure the SSH session and server use the same user and Codex home.
+The existing executable resolver applies, including `CODEX_INSTALL_DIR` and the
+managed `~/.local/bin/codex` preference, so remove conflicting old installations
+or set `CODEX_INSTALL_DIR` to the intended executable's directory.
+
+External mode checks compatibility and connects only. It does not install,
+upgrade, repair, bootstrap, terminate or automatically configure Codex, including
+the streaming-patch and background-rollout-migration feature flags. Missing,
+incompatible or stopped runtimes fail with an error rather than a managed-mode
+fallback. Start/update the server externally, then reconnect in Gateway.
+
+This is lifecycle ownership, not a read-only account or security sandbox:
+conversations, terminal commands and explicit user-requested settings/actions
+still have the SSH user's permissions. App-server itself may write its normal
+session/state files. Change management mode while the host is idle; already
+dispatched remote commands cannot be revoked by changing the setting. Avoid
+registering the same remote account as both managed and external Hosts.
+
 ## Testing
 
 E2E tests do not mock Codex app-server:
@@ -271,15 +300,16 @@ Run the full E2E suite for changes involving SSH, RPC, WebSocket, thread state, 
 
 GitHub Actions runs `pnpm lint` and a credential-free Docker E2E subset on pull
 requests and pushes to `main`. The E2E job builds the production application and
-checks login, language/configuration UI, and real SSH/app-server initialization
-and thread listing. It uses an empty Codex home and never starts model turns.
+checks login, language/configuration UI, real SSH/app-server initialization
+and thread listing, and the external-runtime lifecycle. It uses an empty Codex
+home and never starts model turns.
 No OpenAI API key or personal Codex login is needed.
 
 To run the same subset locally with Docker and Node.js 24 installed:
 
 ```bash
 E2E_CODEX_HOME="$(mktemp -d)" tests/e2e/run-in-containers.sh \
-  ci-smoke.spec.ts i18n.spec.ts --project=chromium
+  ci-smoke.spec.ts i18n.spec.ts external-runtime.spec.ts --project=chromium
 ```
 
 This is not the full conversational E2E suite: model-backed turns, approvals,
