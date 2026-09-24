@@ -267,6 +267,25 @@ tests/e2e/run-in-containers.sh
 
 Run the full E2E suite for changes involving SSH, RPC, WebSocket, thread state, config, upload, diff rendering, mobile layout, or app-server protocol handling.
 
+### Fork CI
+
+GitHub Actions runs `pnpm lint` and a credential-free Docker E2E subset on pull
+requests and pushes to `main`. The E2E job builds the production application and
+checks login, language/configuration UI, and real SSH/app-server initialization
+and thread listing. It uses an empty Codex home and never starts model turns.
+No OpenAI API key or personal Codex login is needed.
+
+To run the same subset locally with Docker and Node.js 24 installed:
+
+```bash
+E2E_CODEX_HOME="$(mktemp -d)" tests/e2e/run-in-containers.sh \
+  ci-smoke.spec.ts i18n.spec.ts --project=chromium
+```
+
+This is not the full conversational E2E suite: model-backed turns, approvals,
+streaming and multi-browser conversation behavior still need a separately
+authenticated test run. CI does not deploy or publish an image.
+
 ## Relationship With Codex
 
 Codex Gateway targets the official Codex app-server protocol. `third_party/openai-codex/` is a submodule used only as a protocol and behavior reference. Gateway should align with official app-server behavior instead of fabricating frontend-only events or maintaining compatibility branches for old protocols.
