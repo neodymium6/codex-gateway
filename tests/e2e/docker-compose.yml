@@ -53,6 +53,38 @@ services:
         E2E_GID: ${E2E_GID:-12345}
     <<: *ssh-target
 
+  ssh-target-external:
+    build:
+      context: ./docker
+      target: external-runtime
+      args:
+        CURRENT_CODEX_CLI_VERSION: ${E2E_SUPPORTED_CODEX_VERSION}
+        E2E_UID: ${E2E_UID:-12345}
+        E2E_GID: ${E2E_GID:-12345}
+    environment:
+      CODEX_HOME: /home/codex/.codex
+
+  ssh-target-external-missing:
+    build:
+      context: ./docker
+      target: empty-runtime
+      args:
+        E2E_UID: ${E2E_UID:-12345}
+        E2E_GID: ${E2E_GID:-12345}
+    environment:
+      CODEX_HOME: /home/codex/.codex
+
+  ssh-target-external-old:
+    build:
+      context: ./docker
+      target: npm-codex
+      args:
+        CODEX_CLI_VERSION: ${E2E_CODEX_CLI_VERSION:-0.140.0}
+        E2E_UID: ${E2E_UID:-12345}
+        E2E_GID: ${E2E_GID:-12345}
+    environment:
+      CODEX_HOME: /home/codex/.codex
+
   build-runner:
     image: codex-gateway-e2e-runner
     mem_limit: 2g
@@ -78,6 +110,9 @@ services:
       - ssh-target-legacy-node
       - ssh-target-npm-codex
       - ssh-target-mfa
+      - ssh-target-external
+      - ssh-target-external-missing
+      - ssh-target-external-old
       - bark-target
     environment:
       HOST: 0.0.0.0

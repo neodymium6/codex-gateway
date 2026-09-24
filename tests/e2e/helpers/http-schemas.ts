@@ -8,6 +8,7 @@ export const hostRecordSchema = z
     username: z.string().nullable(),
     port: z.number().int().positive().nullable(),
     authMode: z.enum(["agent", "privateKey", "password"]),
+    codexRuntimeMode: z.enum(["managed", "external"]).optional(),
     privateKeyPath: z.string().nullable(),
     privateKey: z.string().nullable().optional(),
     password: z.string().nullable().optional(),

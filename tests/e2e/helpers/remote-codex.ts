@@ -152,7 +152,7 @@ export async function addRemoteHost(
   page: Page,
   remote: RemoteCodexEnv,
   name = `docker-codex-${Date.now()}`,
-  options: { waitForConnection?: boolean } = {},
+  options: { waitForConnection?: boolean; codexRuntimeMode?: "managed" | "external" } = {},
 ) {
   await openSettingsTab(page, "主机");
   const hostForm = page
@@ -168,6 +168,10 @@ export async function addRemoteHost(
   await hostForm.getByTestId("host-auth-select").click();
   await page.getByTestId("host-auth-password-option").click();
   await hostForm.getByPlaceholder("SSH 密码").fill(remote.password);
+  if (options.codexRuntimeMode === "external") {
+    await hostForm.getByTestId("host-runtime-select").click();
+    await page.getByTestId("host-runtime-external-option").click();
+  }
 
   const hostResponsePromise = page.waitForResponse(
     (response) => response.url().endsWith("/api/hosts") && response.request().method() === "POST",

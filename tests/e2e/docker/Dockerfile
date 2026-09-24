@@ -65,6 +65,11 @@ RUN chmod +x /usr/local/bin/nvidia-smi /usr/local/bin/e2e-gpu-training
 FROM ssh-base AS legacy-node
 COPY --from=legacy-node-runtime /usr/local/ /usr/local/
 
+# Genuine Codex binary supplied by the operator, outside Gateway's managed layout.
+FROM ssh-base AS external-runtime
+COPY --from=current-codex-runtime /opt/codex-standalone /opt/codex-standalone
+RUN ln -s /opt/codex-standalone/bin/codex /usr/local/bin/codex
+
 FROM ssh-base AS npm-codex
 ARG E2E_UID=1000
 ARG E2E_GID=1000
