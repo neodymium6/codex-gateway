@@ -11,6 +11,7 @@ import { appServerThreadFromUnknown } from "~~/shared/runtime/app-server";
 import { parseLoadedThreadsPage } from "~~/shared/runtime/app-server";
 import { recordFromUnknown } from "~~/shared/utils/records";
 import { firstNonEmptyString } from "~~/shared/utils/strings";
+import { assertCodexManagementAllowed } from "./codex-management-policy";
 
 export interface AppServerRuntimeState {
   running: boolean;
@@ -57,6 +58,7 @@ export class AppServerRuntimeProbe {
   }
 
   async terminateUnmanaged(host: HostWithSecret) {
+    assertCodexManagementAllowed(host);
     hostLifecycleBus.emit({
       hostId: host.id,
       status: "restarting",

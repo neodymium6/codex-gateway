@@ -7,6 +7,7 @@ import { CodexUpgradeCoordinator } from "./codex-upgrade-queue";
 import type { CodexVersionChecker } from "./codex-version-checker";
 import { codexUpgradeLog } from "./codex-upgrade-log";
 import type { CodexUpgradeResources } from "./codex-upgrade-resources";
+import { assertCodexManagementAllowed } from "./codex-management-policy";
 
 export class CodexUpgradeWorkflow {
   private readonly coordinator = new CodexUpgradeCoordinator();
@@ -18,6 +19,7 @@ export class CodexUpgradeWorkflow {
   ) {}
 
   async repair(host: HostWithSecret): Promise<RemoteCodexVersionState> {
+    assertCodexManagementAllowed(host);
     return await this.runExclusive(host, async (resources, attempt) => {
       const beforeVersion = (await this.readVersionForRepair(host)).version;
       await this.stopRuntimeIfPresent(host);
@@ -45,6 +47,7 @@ export class CodexUpgradeWorkflow {
     supportedVersion: string,
     observedBeforeVersion: string,
   ): Promise<RemoteCodexVersionState> {
+    assertCodexManagementAllowed(host);
     return await this.runExclusive(host, async (resources, attempt) => {
       // Hosts can wait in this queue for several minutes. Re-read both CLI and app-server state
       // when this Host reaches the front so a newly started thread is never interrupted and an

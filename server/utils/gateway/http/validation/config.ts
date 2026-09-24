@@ -89,6 +89,7 @@ export function parseGatewayConfig(body: unknown): GatewayConfig {
       username: trimmedOrNull(host.username),
       port: host.port ?? null,
       authMode: host.authMode,
+      codexRuntimeMode: host.codexRuntimeMode,
       privateKeyPath: trimmedOrNull(host.privateKeyPath),
       privateKey: host.privateKey ?? null,
       password: host.password ?? null,

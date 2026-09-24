@@ -153,10 +153,12 @@ exit 1
 `);
 }
 
-export function codexRemoteAppServerVerifyPayload() {
+export function codexRemoteAppServerVerifyPayload(
+  options: { configure: boolean } = { configure: true },
+) {
   return codexRemotePayload(`
 set -eu
-${ensureGatewayCodexConfigFeatureSnippet()}
+${options.configure ? ensureGatewayCodexConfigFeatureSnippet() : ""}
 "$CODEX_BIN" --version
 "$CODEX_BIN" app-server proxy --help >/dev/null
 `);

@@ -10,6 +10,7 @@ export const hostBaseSchema = z
       z.coerce.number().int().min(1).max(65535).nullable().optional(),
     ),
     authMode: z.enum(["agent", "privateKey", "password"]).default("agent"),
+    codexRuntimeMode: z.enum(["managed", "external"]).default("managed"),
     privateKeyPath: z.string().trim().nullable().optional(),
     privateKey: z.string().nullable().optional(),
     password: z.string().nullable().optional(),

@@ -6,6 +6,7 @@ export function hostRuntimeFingerprint(host: HostRecord) {
     username: host.username,
     port: host.port,
     authMode: host.authMode,
+    codexRuntimeMode: host.codexRuntimeMode ?? "managed",
     privateKeyPath: host.privateKeyPath,
     privateKey: host.privateKey,
     password: host.password,

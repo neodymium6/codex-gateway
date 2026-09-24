@@ -16,6 +16,22 @@ const { t } = useI18n();
 </script>
 
 <template>
+  <Select v-model="model.codexRuntimeMode">
+    <SelectTrigger
+      class="w-full bg-surface"
+      data-testid="host-runtime-select"
+      :aria-label="t('app.codexRuntimeMode')"
+    >
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="managed">{{ t("app.codexRuntimeManaged") }}</SelectItem>
+      <SelectItem value="external" data-testid="host-runtime-external-option">{{
+        t("app.codexRuntimeExternal")
+      }}</SelectItem>
+    </SelectContent>
+  </Select>
+  <p class="text-sm text-muted-foreground">{{ t("app.codexRuntimeHelp") }}</p>
   <Input
     v-model="model.name"
     :data-testid="create ? 'host-name-input' : undefined"
