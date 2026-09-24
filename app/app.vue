@@ -49,9 +49,9 @@ useHead({
   ],
 });
 
-onMounted(() => {
+onMounted(async () => {
+  await auth.bootstrap();
   mounted.value = true;
-  auth.hydrate();
 });
 
 watch(
@@ -86,6 +86,9 @@ watch(
     >ready</span
   >
   <Toaster rich-colors position="top-right" />
-  <LoginScreen v-if="mounted && !isAuthenticated" />
-  <NuxtLayout v-else :name="layoutName" />
+  <p v-if="auth.bootstrapFailed" role="alert" class="p-4 text-danger">
+    {{ $t("app.authBootstrapFailed") }}
+  </p>
+  <LoginScreen v-if="mounted && !auth.bootstrapFailed && !isAuthenticated" />
+  <NuxtLayout v-else-if="!auth.bootstrapFailed" :name="layoutName" />
 </template>

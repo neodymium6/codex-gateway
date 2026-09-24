@@ -63,6 +63,16 @@ export const userStore = {
     if (!user || !user.isActive || !verifyPassword(password, user.passwordHash)) {
       return null;
     }
+    return this.issueSession(user);
+  },
+
+  loginTrusted(username: string): AuthSession | null {
+    const user = this.findByUsername(username);
+    if (!user || !user.isActive) return null;
+    return this.issueSession(user);
+  },
+
+  issueSession(user: AuthenticatedUser): AuthSession {
     const token = randomBytes(32).toString("base64url");
     const expiresAt = new Date(Date.now() + SESSION_DAYS * 86_400_000).toISOString();
     const now = new Date().toISOString();

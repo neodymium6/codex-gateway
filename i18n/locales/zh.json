@@ -1,5 +1,6 @@
 {
   "app": {
+    "authBootstrapFailed": "无法初始化登录。请检查 Gateway 身份验证配置并重新加载。",
     "newChat": "新聊天",
     "loginTitle": "登录 Codex Gateway",
     "loginDescription": "输入管理员创建的账号密码，连接配置会加密保存在服务器端。",

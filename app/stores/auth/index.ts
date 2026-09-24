@@ -7,6 +7,9 @@ export const useAuthStore = defineStore("auth", () => {
   const token = ref("");
   const username = ref("");
   const initialized = ref(false);
+  const trustedNetwork = ref(false);
+  const bootstrapFailed = ref(false);
+  let bootstrapPromise: Promise<void> | null = null;
   const sessionEpoch = ref(0);
   const storedToken = useLocalStorage<string | null>(AUTH_STORAGE_KEY, null);
   const storedUsername = useLocalStorage<string | null>(`${AUTH_STORAGE_KEY}:username`, null);
@@ -27,6 +30,36 @@ export const useAuthStore = defineStore("auth", () => {
     }
     replaceSession(storedToken.value ?? "", storedUsername.value ?? "");
     initialized.value = true;
+  }
+
+  async function bootstrap() {
+    if (bootstrapPromise !== null) return bootstrapPromise;
+    bootstrapPromise = (async () => {
+      bootstrapFailed.value = false;
+      try {
+        const result = await $fetch<{
+          mode: "password" | "trusted-network";
+          session?: { token: string; user: { username: string } };
+        }>("/api/auth/bootstrap", {
+          method: "POST",
+          body: {},
+          headers:
+            storedToken.value !== null && storedToken.value !== ""
+              ? { authorization: `Bearer ${storedToken.value}` }
+              : {},
+        });
+        trustedNetwork.value = result.mode === "trusted-network";
+        if (result.session) setSession(result.session.token, result.session.user.username);
+        else hydrate();
+      } catch {
+        bootstrapFailed.value = true;
+        replaceSession("", "");
+        initialized.value = true;
+      }
+    })().finally(() => {
+      bootstrapPromise = null;
+    });
+    return bootstrapPromise;
   }
 
   async function login(input: { username: string; password: string }) {
@@ -70,6 +103,7 @@ export const useAuthStore = defineStore("auth", () => {
     initialized.value = true;
     storedToken.value = null;
     storedUsername.value = null;
+    if (trustedNetwork.value) void bootstrap();
   }
 
   function replaceSession(nextToken: string, nextUsername: string) {
@@ -89,6 +123,9 @@ export const useAuthStore = defineStore("auth", () => {
     sessionEpoch,
     isAuthenticated,
     hydrate,
+    bootstrap,
+    bootstrapFailed,
+    trustedNetwork,
     login,
     logout,
     clearSession,

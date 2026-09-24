@@ -8,10 +8,12 @@ import {
 } from "@codex-gateway/ui/select";
 
 const { locale, setLocale } = useI18n();
+const preferredLocale = useCookie<string | null>("gateway-ui-locale", { sameSite: "lax" });
 
 async function switchLanguage(value: unknown) {
   if (value === "zh" || value === "en") {
     await setLocale(value);
+    preferredLocale.value = value;
   }
 }
 </script>
