@@ -1,8 +1,7 @@
 import type { ComposerTurnOptions } from "~~/shared/types";
 import { useGatewayRealtimeStore } from "@/stores/gateway-realtime";
 import {
-  expectThreadTurnsPage,
-  expectThreadItemsPage,
+  expectThreadTimelinePage,
   expectTurnInterruptAccepted,
   expectTurnStartAccepted,
   expectTurnSteerAccepted,
@@ -39,25 +38,22 @@ export function requestTurnStart(input: {
   );
 }
 
-export function requestThreadItemsPage(input: {
+export function requestThreadTimelinePage(input: {
   hostId: number;
   threadId: string;
-  turnId: string;
   cursor: string | null;
-  limit: number;
+  limit?: number;
 }) {
   return useGatewayRealtimeStore().request(
     (requestId) => ({
-      type: "thread.items.load",
+      type: "thread.timeline.load",
       requestId,
       hostId: input.hostId,
       threadId: input.threadId,
-      turnId: input.turnId,
       cursor: input.cursor,
       limit: input.limit,
-      sortDirection: "asc" as const,
     }),
-    expectThreadItemsPage,
+    expectThreadTimelinePage,
   );
 }
 
@@ -116,26 +112,5 @@ export function respondToServerRequest(
       result,
     }),
     { errorMode: "notify" },
-  );
-}
-
-export function requestThreadTurnsPage(input: {
-  hostId: number;
-  threadId: string;
-  cursor: string;
-  limit: number;
-  sortDirection: "asc" | "desc";
-}) {
-  return useGatewayRealtimeStore().request(
-    (requestId) => ({
-      type: "thread.turns.load",
-      requestId,
-      hostId: input.hostId,
-      threadId: input.threadId,
-      cursor: input.cursor,
-      limit: input.limit,
-      sortDirection: input.sortDirection,
-    }),
-    expectThreadTurnsPage,
   );
 }

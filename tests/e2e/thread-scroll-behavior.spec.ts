@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { ThreadHistoryState } from "../../shared/types";
-import type { ThreadViewState } from "../../app/stores/gateway/types";
 import { projectThreadTimelineHistory } from "../../shared/thread-history/timeline";
+import type { ThreadViewState } from "../../app/stores/gateway/types";
 import { gatewayThreadFixture } from "./fixtures/gateway-thread";
 import { openApp } from "./helpers/app";
 import {
@@ -36,15 +36,15 @@ import {
 import {
   buildTextTurns,
   frameSpread,
-  installDeferredThreadTurnsLoadStub,
+  installDeferredThreadTimelineLoadStub,
   requestOlderTurnsFromStore,
-  releaseDeferredThreadTurnsLoad,
+  releaseDeferredThreadTimelineLoad,
   startBottomDistanceTracking,
   startElementTopTracking,
   startLocatorTopTracking,
   stopFrameTracking,
   threadTurnCount,
-  threadTurnsLoadRequests,
+  threadTimelineLoadRequests,
   waitForAnimationFrames,
 } from "./helpers/history-pagination";
 
@@ -53,21 +53,16 @@ test("history stays stable until an explicit older-page request prepends turns",
 }) => {
   await openApp(page);
   const threadId = "e2e-explicit-history-prepend-thread";
-  const httpTurnsRequests = trackThreadTurnsHttpRequests(page);
-  await installDeferredThreadTurnsLoadStub(page, {
-    type: "thread.turns.page",
-    requestId: "e2e-thread-turns-page",
-    hostId: 1,
-    threadId,
+  await installDeferredThreadTimelineLoadStub(page, {
     history: { thread: { id: threadId, turns: buildTextTurns(1, 3, "background turn") } },
-    turnsPage: { nextCursor: null, backwardsCursor: null },
+    nextCursor: null,
   });
 
   await seedGatewayThread(page, {
     projectId: 1,
     threadId,
     currentThread: { id: threadId, name: "Background Turn Top Up" },
-    olderTurnsCursor: JSON.stringify({ turnId: "turn-004", includeAnchor: false }),
+    oldestTimelineCursor: "cursor-before-oldest",
     history: {
       thread: {
         id: threadId,
@@ -82,21 +77,21 @@ test("history stays stable until an explicit older-page request prepends turns",
   // Initial activation asks for two turns. The view must remain untouched instead of silently
   // starting the old background prepend-to-five path.
   await page.waitForTimeout(250);
-  expect(await threadTurnsLoadRequests(page)).toHaveLength(0);
+  expect(await threadTimelineLoadRequests(page)).toHaveLength(0);
   await startElementTopTracking(page, "background turn 004");
   await requestOlderTurnsFromStore(page);
   await expect
-    .poll(() => threadTurnsLoadRequests(page).then((requests) => requests.length))
+    .poll(() => threadTimelineLoadRequests(page).then((requests) => requests.length))
     .toBe(1);
-  await releaseDeferredThreadTurnsLoad(page);
+  await releaseDeferredThreadTimelineLoad(page);
   await expect.poll(() => threadTurnCount(page)).toBe(5);
   await waitForAnimationFrames(page, 4);
   const samples = await stopFrameTracking(page);
   expect(frameSpread(samples), JSON.stringify(samples)).toBeLessThanOrEqual(2);
-  const requests = await threadTurnsLoadRequests(page);
+  const requests = await threadTimelineLoadRequests(page);
   expect(requests).toHaveLength(1);
-  expect(requests[0]).toMatchObject({ type: "thread.turns.load", limit: 5 });
-  expect(httpTurnsRequests()).toBe(0);
+  expect(requests[0]).toMatchObject({ type: "thread.timeline.load", limit: 100 });
+  expect(requests[0]?.cursor).toBe("cursor-before-oldest");
 });
 
 test("same-page thread switches retain the loaded history depth", async ({ page }) => {
@@ -163,7 +158,7 @@ function selectedTimelineUsesCachedReference(page: Page, threadId: string) {
     if (views === undefined) throw new Error("Gateway E2E driver is unavailable");
     // A route switch is only a Pinia selection. Object identity is intentional here: rebuilding an
     // equivalent array would rescan every item and remount virtual rows for large 0.147 histories.
-    return views.timelineTurns === views.threadViews[`1:${threadId}`]?.timelineTurns;
+    return views.history === views.threadViews[`1:${threadId}`]?.history;
   }, threadId);
 }
 
@@ -550,8 +545,7 @@ test("switching threads discards stale virtual row measurements", async ({ page 
           },
         },
         events: [],
-        olderTurnsCursor: null,
-        newerTurnsCursor: null,
+        oldestTimelineCursor: null,
         lastEventId: 0,
         eventEpoch: "e2e-event-epoch",
         loading: false,
@@ -572,8 +566,7 @@ test("switching threads discards stale virtual row measurements", async ({ page 
           },
         },
         events: [],
-        olderTurnsCursor: null,
-        newerTurnsCursor: null,
+        oldestTimelineCursor: null,
         lastEventId: 0,
         eventEpoch: "e2e-event-epoch",
         loading: false,
@@ -658,17 +651,14 @@ function buildMeasuredTurns(threadId: string, lineCount: number) {
 }
 
 function cachedThreadView(threadId: string, history: ThreadHistoryState): ThreadViewState {
-  const timelineTurns = projectThreadTimelineHistory(history).thread.turns;
   return {
     hostId: 1,
     projectId: 1,
     threadId,
     currentThread: gatewayThreadFixture({ id: threadId }, { projectId: 1 }),
-    history,
-    timelineTurns,
+    history: projectThreadTimelineHistory(history),
     events: [],
-    olderTurnsCursor: null,
-    newerTurnsCursor: null,
+    oldestTimelineCursor: null,
     lastEventId: 0,
     eventEpoch: "e2e-event-epoch",
     loading: false,
@@ -1047,20 +1037,15 @@ test("loading older turns prepends history without moving the current viewport a
 }) => {
   await openApp(page);
   const threadId = "e2e-load-older-anchor-thread";
-  const httpTurnsRequests = trackThreadTurnsHttpRequests(page);
-  await installDeferredThreadTurnsLoadStub(page, {
-    type: "thread.turns.page",
-    requestId: "e2e-thread-turns-page",
-    hostId: 1,
-    threadId,
+  await installDeferredThreadTimelineLoadStub(page, {
     history: { thread: { id: threadId, turns: buildTextTurns(1, 5, "anchored turn") } },
-    turnsPage: { nextCursor: null, backwardsCursor: null },
+    nextCursor: null,
   });
   await seedGatewayThread(page, {
     projectId: 1,
     threadId,
     currentThread: { id: threadId, name: "Load Older Anchor" },
-    olderTurnsCursor: JSON.stringify({ turnId: "turn-006", includeAnchor: false }),
+    oldestTimelineCursor: "cursor-before-oldest",
     history: {
       thread: {
         id: threadId,
@@ -1071,16 +1056,15 @@ test("loading older turns prepends history without moving the current viewport a
 
   await scrollChatViewportToTop(page);
   await expect
-    .poll(() => threadTurnsLoadRequests(page).then((requests) => requests.length))
+    .poll(() => threadTimelineLoadRequests(page).then((requests) => requests.length))
     .toBe(1);
   const anchor = await captureTextAnchor(page, "anchored turn 006");
-  await releaseDeferredThreadTurnsLoad(page);
+  await releaseDeferredThreadTimelineLoad(page);
 
   await expect.poll(() => threadTurnCount(page)).toBe(10);
   await page.waitForTimeout(300);
   await expect.poll(() => visibleTextTop(page, anchor.text)).toBeGreaterThanOrEqual(anchor.top - 2);
   await expect.poll(() => visibleTextTop(page, anchor.text)).toBeLessThanOrEqual(anchor.top + 2);
-  expect(httpTurnsRequests()).toBe(0);
 });
 
 test("history prepend and current Agent streaming preserve the same detached anchor", async ({
@@ -1088,20 +1072,16 @@ test("history prepend and current Agent streaming preserve the same detached anc
 }) => {
   await openApp(page);
   const threadId = "e2e-concurrent-prepend-stream-thread";
-  await installDeferredThreadTurnsLoadStub(page, {
-    type: "thread.turns.page",
-    requestId: "e2e-concurrent-thread-turns-page",
-    hostId: 1,
-    threadId,
+  await installDeferredThreadTimelineLoadStub(page, {
     history: { thread: { id: threadId, turns: buildTextTurns(1, 5, "concurrent turn", 8) } },
-    turnsPage: { nextCursor: null, backwardsCursor: null },
+    nextCursor: null,
   });
   await seedGatewayThread(page, {
     projectId: 1,
     threadId,
     currentThread: { id: threadId, name: "Concurrent Prepend Stream" },
     status: "running",
-    olderTurnsCursor: JSON.stringify({ turnId: "turn-006", includeAnchor: false }),
+    oldestTimelineCursor: "cursor-before-oldest",
     history: {
       thread: {
         id: threadId,
@@ -1126,7 +1106,7 @@ test("history prepend and current Agent streaming preserve the same detached anc
 
   await scrollChatViewportToTop(page);
   await expect
-    .poll(() => threadTurnsLoadRequests(page).then((requests) => requests.length))
+    .poll(() => threadTimelineLoadRequests(page).then((requests) => requests.length))
     .toBe(1);
   const anchor = await captureVisibleTextAnchor(page, "concurrent turn 006");
 
@@ -1135,7 +1115,7 @@ test("history prepend and current Agent streaming preserve the same detached anc
     prefix: "concurrent incoming line",
     count: 20,
   });
-  await releaseDeferredThreadTurnsLoad(page);
+  await releaseDeferredThreadTimelineLoad(page);
 
   await expect.poll(() => threadTurnCount(page)).toBe(11);
   await waitForAnimationFrames(page, 4);
@@ -1143,16 +1123,6 @@ test("history prepend and current Agent streaming preserve the same detached anc
   await expect.poll(() => visibleTextTop(page, anchor.text)).toBeLessThanOrEqual(anchor.top + 2);
   await expect(page.getByTestId("chat-scroll-area")).toHaveAttribute("data-follow-latest", "false");
 });
-
-function trackThreadTurnsHttpRequests(page: Page) {
-  let count = 0;
-  page.on("request", (request) => {
-    if (new URL(request.url()).pathname === "/api/threads/turns") {
-      count += 1;
-    }
-  });
-  return () => count;
-}
 
 async function startTimelineRowCountTracking(page: Page) {
   await page.getByTestId("chat-scroll-area").evaluate((root) => {

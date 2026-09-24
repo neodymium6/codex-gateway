@@ -12,25 +12,31 @@ export function mergeThreadTurns(
 ): ThreadHistoryState {
   const nextHistory = ensureHistoryThread(history, currentThread, threadId);
   const existingTurns = nextHistory.thread.turns;
-  const seen = new Set(
-    existingTurns
-      .map((turn) => turn.id)
-      .filter((id): id is string | number => typeof id === "string" || typeof id === "number")
-      .map((id) => String(id)),
+  const incoming = turns.filter(
+    (turn) => typeof turn.id === "string" || typeof turn.id === "number",
   );
-  const incoming = turns.filter((turn) => {
-    if (typeof turn.id !== "string" && typeof turn.id !== "number") {
-      return true;
-    }
-    const id = String(turn.id);
-    if (seen.has(id)) {
-      return false;
-    }
-    seen.add(id);
-    return true;
+  const incomingIds = new Set(incoming.map((turn) => String(turn.id)));
+  const mergedExisting = existingTurns.map((existing) => {
+    if (!incomingIds.has(String(existing.id))) return existing;
+    const incomingTurn = incoming.find((turn) => String(turn.id) === String(existing.id));
+    if (incomingTurn === undefined) return existing;
+    const existingItems = existing.items ?? [];
+    const incomingItems = incomingTurn.items ?? [];
+    return {
+      ...existing,
+      ...incomingTurn,
+      itemsView: existing.itemsView === "full" ? "full" : incomingTurn.itemsView,
+      items:
+        direction === "prepend"
+          ? mergeTurnItems(incomingItems, existingItems)
+          : mergeTurnItems(existingItems, incomingItems),
+    };
   });
+  const newTurns = incoming.filter(
+    (turn) => !existingTurns.some((existing) => String(existing.id) === String(turn.id)),
+  );
   nextHistory.thread.turns =
-    direction === "prepend" ? [...incoming, ...existingTurns] : [...existingTurns, ...incoming];
+    direction === "prepend" ? [...newTurns, ...mergedExisting] : [...mergedExisting, ...newTurns];
   return nextHistory;
 }
 
@@ -58,7 +64,8 @@ export function syncCompletedTurn(
       ...existingTurn,
       ...syncedTurn,
       // A lifecycle notification describes its own payload, not our accumulated history.
-      // turn/completed carries only a summary (or no items), including for legacy threads.
+      // turn/completed carries only a summary (or no items), so it must not downgrade a full
+      // timeline page already loaded by the Gateway.
       // Never downgrade a full page we already loaded; conversely, receiving live items alone
       // does not prove completeness when a client subscribed halfway through a turn.
       itemsView: existingTurn.itemsView === "full" ? "full" : syncedTurn.itemsView,

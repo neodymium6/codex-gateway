@@ -1,104 +1,62 @@
-import type { AppServerThread, HostRecord, ThreadTimelineItem } from "~~/shared/types";
-import { parseThreadItemsPage, parseTurnsPage } from "~~/shared/runtime/app-server";
+import type {
+  AppServerThread,
+  AppServerTimelinePage,
+  HostRecord,
+  ThreadTimelineItem,
+} from "~~/shared/types";
+import { parseThreadTimelinePage } from "~~/shared/runtime/app-server";
 import {
-  asThreadTimelineItem,
-  projectThreadTimelineHistory,
-} from "~~/shared/thread-history/timeline";
+  timelinePageItemsForTurn,
+  timelinePagesItemsForTurn,
+} from "~~/shared/thread-history/app-server-timeline";
 import { threadSnapshotStore } from "../state/thread-snapshots";
+import { threadTimelinePageStore } from "../state/thread-timeline-pages";
 import type { ControllerRegistry } from "./controller-registry";
-import { pageCursorState, pageToFullHistory } from "./thread-history-pages";
-import { DEFAULT_TURN_PAGE_LIMIT, type TurnsPage } from "./types";
-import { readLegacyTurnItems } from "./legacy-turn-items";
+import { DEFAULT_TIMELINE_PAGE_LIMIT } from "./types";
 import type { RecoveredTurnTail } from "./thread-tail-recovery";
-
-export interface ThreadTurnsListInput {
-  cursor?: string | null;
-  limit?: number;
-  sortDirection?: "asc" | "desc";
-}
 
 export class ThreadHistoryReader {
   constructor(private readonly registry: ControllerRegistry) {}
 
-  async loadInitialTurnsPage(
-    host: HostRecord,
-    thread: AppServerThread,
-    limit: number,
-    resumedPage?: TurnsPage,
-  ) {
-    // Keep the two upstream history contracts separate at this boundary. Paginated histories can
-    // reuse thread/resume's bounded summary page and fetch items on demand. Legacy histories have
-    // no stable item-page API, so initial Turn pages are requested with full items. Subsequent live
-    // notifications may still need hydration; that separate path reads full legacy Turn pages too.
-    if (resumedPage !== undefined) {
-      return resumedPage;
-    }
-    return this.fetchTurnsPage(host, thread.id, thread.historyMode, {
-      cursor: null,
-      limit,
-      sortDirection: "desc",
-    });
+  async loadInitialTimelinePage(host: HostRecord, thread: AppServerThread) {
+    return this.fetchTimelinePage(host, thread.id, null);
   }
 
-  async listThreadTurns(host: HostRecord, threadId: string, input: ThreadTurnsListInput) {
-    const snapshot = this.requireSnapshot(host.id, threadId);
-    const page = await this.fetchTurnsPage(host, threadId, snapshot.thread.historyMode, input);
-    return {
-      history: projectThreadTimelineHistory(pageToFullHistory({ id: threadId }, page)),
-      turnsPage: pageCursorState(page),
-    };
-  }
-
-  async listThreadItems(
+  async listTimelinePage(
     host: HostRecord,
     threadId: string,
-    input: {
-      turnId: string;
-      cursor?: string | null;
-      limit?: number;
-      sortDirection?: "asc" | "desc";
-    },
+    cursor: string | null,
+    limit?: number,
   ) {
-    const snapshot = this.requireSnapshot(host.id, threadId);
-    const cached = snapshot.history.thread.turns.find((turn) => turn.id === input.turnId);
-    if (cached?.itemsView === "full" && input.cursor == null) {
-      return {
-        turnId: input.turnId,
-        items: input.sortDirection === "desc" ? [...cached.items].reverse() : cached.items,
-        nextCursor: null,
-        backwardsCursor: null,
-      };
-    }
-    const client = await this.registry.getHostClient(host);
-    if (snapshot.thread.historyMode === "legacy") {
-      const items = await readLegacyTurnItems(client, host, threadId, input.turnId);
-      return {
-        turnId: input.turnId,
-        items: input.sortDirection === "desc" ? [...items].reverse() : items,
-        nextCursor: null,
-        backwardsCursor: null,
-      };
-    }
-    const page = await client.request(
-      "thread/items/list",
-      {
-        threadId,
-        turnId: input.turnId,
-        cursor: input.cursor ?? null,
-        limit: input.limit ?? 100,
-        sortDirection: input.sortDirection ?? "asc",
-      },
-      120_000,
-      parseThreadItemsPage,
-    );
+    this.requireSnapshot(host.id, threadId);
+    return this.fetchTimelinePage(host, threadId, cursor, limit);
+  }
+
+  async readTurnItems(host: HostRecord, threadId: string, turnId: string) {
+    this.requireSnapshot(host.id, threadId);
+    const pages: AppServerTimelinePage[] = [];
+    const seenCursors = new Set<string>();
+    let cursor: string | null = null;
+    let foundTurnStart = false;
+    do {
+      const page = await this.fetchTimelinePage(host, threadId, cursor);
+      pages.push(page);
+      foundTurnStart = page.data.some(
+        (entry) => entry.type === "turnStarted" && entry.turnId === turnId,
+      );
+      cursor = foundTurnStart ? null : page.nextCursor;
+      if (page.nextCursor !== null) {
+        if (seenCursors.has(page.nextCursor)) {
+          throw new Error("App Server returned a repeated timeline cursor");
+        }
+        seenCursors.add(page.nextCursor);
+      }
+    } while (cursor !== null);
+
     return {
-      turnId: input.turnId,
-      items: page.data.flatMap((entry) => {
-        const item = asThreadTimelineItem(entry.item);
-        return item === null ? [] : [item];
-      }),
-      nextCursor: page.nextCursor,
-      backwardsCursor: page.backwardsCursor,
+      items: timelinePagesItemsForTurn(pages, turnId),
+      complete: foundTurnStart,
+      pages,
     };
   }
 
@@ -107,57 +65,38 @@ export class ThreadHistoryReader {
     threadId: string,
     turnId: string,
   ): Promise<RecoveredTurnTail> {
-    const client = await this.registry.getHostClient(host);
-    // Match Paseo's reconnect model: install one bounded authoritative latest tail, then leave
-    // older history on its existing user-driven pagination path. Scanning the complete Turn here
-    // would make revisiting one long conversation replay every tool item and recreate the memory
-    // problem that paginated App Server history is intended to avoid.
-    const page: ReturnType<typeof parseThreadItemsPage> = await client.request(
-      "thread/items/list",
-      {
-        threadId,
-        turnId,
-        cursor: null,
-        limit: 100,
-        sortDirection: "desc",
-      },
-      120_000,
-      parseThreadItemsPage,
+    this.requireSnapshot(host.id, threadId);
+    const latestPage = await this.fetchTimelinePage(host, threadId, null);
+    const tailItems: ThreadTimelineItem[] = timelinePageItemsForTurn(latestPage, turnId);
+    const complete = latestPage.data.some(
+      (entry) => entry.type === "turnStarted" && entry.turnId === turnId,
     );
-    const tailItems: ThreadTimelineItem[] = page.data
-      .flatMap((entry) => {
-        const item = asThreadTimelineItem({ ...entry.item, turnId: entry.turnId });
-        return item === null ? [] : [item];
-      })
-      .reverse();
 
     return {
       turnId,
       olderUserItems: [],
       tailItems,
-      complete: page.nextCursor === null,
+      complete,
     };
   }
 
-  private async fetchTurnsPage(
+  private async fetchTimelinePage(
     host: HostRecord,
     threadId: string,
-    historyMode: AppServerThread["historyMode"],
-    input: ThreadTurnsListInput,
+    cursor: string | null,
+    limit = DEFAULT_TIMELINE_PAGE_LIMIT,
   ) {
+    const cached = threadTimelinePageStore.get(host.id, threadId, cursor, limit);
+    if (cached !== null) return cached;
     const client = await this.registry.getHostClient(host);
-    return client.request(
-      "thread/turns/list",
-      {
-        threadId,
-        cursor: input.cursor ?? null,
-        limit: input.limit ?? DEFAULT_TURN_PAGE_LIMIT,
-        sortDirection: input.sortDirection ?? "desc",
-        itemsView: historyMode === "paginated" ? "summary" : "full",
-      },
+    const page = await client.request(
+      "thread/timeline/list",
+      { threadId, cursor, limit },
       120_000,
-      parseTurnsPage,
+      parseThreadTimelinePage,
     );
+    threadTimelinePageStore.set(host.id, threadId, cursor, limit, page);
+    return page;
   }
 
   private requireSnapshot(hostId: number, threadId: string) {

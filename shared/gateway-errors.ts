@@ -1,7 +1,7 @@
 import { recordFromUnknown } from "./utils/records";
 
 export const STALE_THREAD_CURSOR_ERROR_CODE = "staleThreadCursor";
-const STALE_THREAD_CURSOR_ERROR_PREFIX = "invalid cursor:";
+const STALE_THREAD_CURSOR_ERROR_PREFIX = "invalid thread timeline cursor";
 
 export function isStaleThreadCursorErrorLike(error: unknown) {
   const candidate = recordFromUnknown(error);
@@ -16,11 +16,11 @@ export function isStaleThreadCursorErrorLike(error: unknown) {
         ? candidateMessage
         : null;
   return (
-    candidate?.rpcMethod === "thread/turns/list" &&
+    candidate?.rpcMethod === "thread/timeline/list" &&
     candidate?.rpcCode === -32600 &&
-    // Codex 0.147 paginated cursors embed their dynamic `{ turnId, includeAnchor }` anchor in the
-    // message. Classify the protocol error by method, JSON-RPC code and stable prefix; full-string
-    // equality is only valid for the legacy rollout message and misroutes paginated recovery.
+    // Timeline cursors are opaque and can become invalid after a new rollout is appended. Classify
+    // the protocol error by method, JSON-RPC code and stable prefix so the browser can restart its
+    // current timeline page without exposing an upstream implementation detail.
     message?.startsWith(STALE_THREAD_CURSOR_ERROR_PREFIX) === true
   );
 }

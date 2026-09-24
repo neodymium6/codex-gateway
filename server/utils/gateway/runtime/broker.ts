@@ -144,29 +144,13 @@ class ThreadBroker {
     return this.settings.renameThread(host, threadId, name);
   }
 
-  async listThreadTurns(
+  async listThreadTimelinePage(
     host: HostRecord,
     threadId: string,
-    params: {
-      cursor?: string | null;
-      limit?: number;
-      sortDirection?: "asc" | "desc";
-    },
+    cursor: string | null,
+    limit?: number,
   ) {
-    return this.historyReader.listThreadTurns(host, threadId, params);
-  }
-
-  async listThreadItems(
-    host: HostRecord,
-    threadId: string,
-    params: {
-      turnId: string;
-      cursor?: string | null;
-      limit?: number;
-      sortDirection?: "asc" | "desc";
-    },
-  ) {
-    return this.historyReader.listThreadItems(host, threadId, params);
+    return this.historyReader.listTimelinePage(host, threadId, cursor, limit);
   }
 
   async addThreadAttachment(

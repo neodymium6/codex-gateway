@@ -37,11 +37,9 @@ export function requestActivateThreadSnapshot(input: ThreadSnapshotActivationInp
       limit: input.limit ?? INITIAL_TURN_PAGE_LIMIT,
     }),
     expectThreadSnapshot,
-    // Legacy app-server rollouts can take longer than 30 seconds to replay even when the first
-    // page contains only two Turns. Use the realtime broker's shared long-operation deadline,
-    // which intentionally exceeds the backend RPC timeout. A shorter transport-specific timer
-    // abandons the browser request while the server keeps loading and later attaches an orphaned
-    // subscription, causing repeated opens to amplify the original slowdown.
+    // History activation can replay a large official timeline page over SSH. The realtime store
+    // owns the shared long-operation deadline so a browser request does not abandon the server
+    // operation and create a second subscription on the next activation.
   );
 }
 

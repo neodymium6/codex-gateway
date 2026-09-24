@@ -1,4 +1,5 @@
 import type { AppServerThread, HostRecord } from "~~/shared/types";
+import type { AppServerTimelinePage } from "~~/shared/runtime/app-server";
 import { INITIAL_TURN_PAGE_LIMIT } from "~~/shared/config";
 import { threadTurnsFromHistory } from "~~/shared/thread-history/shape";
 import { projectThreadTimelineHistory } from "~~/shared/thread-history/timeline";
@@ -13,16 +14,16 @@ import { threadMetadataStore } from "../state/thread-metadata";
 import { threadSnapshotStore } from "../state/thread-snapshots";
 import { ControllerRegistry } from "./controller-registry";
 import type { ThreadController } from "./thread-controller";
-import { pageCursorState, pageToFullHistory } from "./thread-history-pages";
 import { runtimeLog } from "./runtime-log";
 import { threadRuntimeEvents } from "./thread-runtime-events";
-import type { ThreadOpenSnapshot, TurnsPage } from "./types";
-import { preserveUserMessagesInOpenSnapshot } from "./open-snapshot-events";
+import type { ThreadOpenSnapshot } from "./types";
+import { applyMaterializedEventsToOpenSnapshot } from "./open-snapshot-events";
 import { currentGatewayUserId } from "../state/memory";
 import { parseThreadReadResult, parseThreadStartResult } from "~~/shared/runtime/app-server";
 import { gatewayThreadFromAppServer } from "../protocol/gateway-thread";
 import type { ThreadHistoryReader } from "./thread-history-reader";
 import { installRecoveredTurnTail } from "./thread-tail-recovery";
+import { timelinePageToTurns } from "~~/shared/thread-history/app-server-timeline";
 
 export class ThreadOpenService {
   private readonly pendingRefreshes = new Map<
@@ -66,11 +67,8 @@ export class ThreadOpenService {
         }
         // Runtime notifications are projected into this snapshot as they arrive, including the
         // active Turn's cumulative output and status. Re-reading a running thread here would make
-        // every browser activation call thread/turns/list again. For legacy rollouts app-server
-        // must replay the complete JSONL even when the requested page contains only two Turns, so
-        // that policy made long conversations slow while their realtime controller was healthy.
-        // Only an absent or too-shallow cache requires remote history I/O; reconnect gaps already
-        // use the authoritative refresh path explicitly.
+        // every browser activation call repeat the timeline scan. Only an absent or too-shallow
+        // cache requires remote history I/O; reconnect gaps use the authoritative refresh path.
         return this.snapshotResult(host, threadId, projectId, cachedSnapshot);
       }
       runtimeLog("thread cache depth refresh", {
@@ -99,15 +97,12 @@ export class ThreadOpenService {
     const history = projectThreadTimelineHistory({
       thread: { id: thread.id, turns: thread.turns },
     });
-    const turnsPage = {
-      nextCursor: null,
-      backwardsCursor: null,
-    };
+    const oldestTimelineCursor = null;
     const snapshot = {
       thread,
       history,
       projectId,
-      turnsPage,
+      oldestTimelineCursor,
       threadSettings: extractThreadSettings(parsed.raw),
       tokenUsage: latestTokenUsageFromEvents(recentEvents),
     };
@@ -125,7 +120,7 @@ export class ThreadOpenService {
         tokenUsage: snapshot.tokenUsage,
         projectId,
         project: projectId === null ? null : projectStore.get(projectId),
-        turnsPage,
+        oldestTimelineCursor: null,
         recentEvents: snapshotRecentEvents(host.id, threadId),
       },
     };
@@ -222,12 +217,11 @@ export class ThreadOpenService {
       host,
       threadId,
       projectId,
-      limit,
       activationController,
     );
     let { snapshot } = loaded;
     const { resolvedProjectId } = loaded;
-    if (recoverLatestTail && snapshot.thread.historyMode === "paginated") {
+    if (recoverLatestTail) {
       const latestTurn = snapshot.history.thread.turns.at(-1);
       const latestTurnId = latestTurn?.id === undefined ? "" : String(latestTurn.id);
       if (latestTurnId !== "") {
@@ -253,7 +247,7 @@ export class ThreadOpenService {
       runtimeStatus: runtimeStatusFromThreadState(snapshot.thread, snapshot.history, recentEvents),
       projectId: resolvedProjectId,
       project: resolvedProjectId === null ? null : projectStore.get(resolvedProjectId),
-      turnsPage: snapshot.turnsPage,
+      oldestTimelineCursor: snapshot.oldestTimelineCursor,
       threadSettings: snapshot.threadSettings,
       tokenUsage: latestTokenUsageFromEvents(recentEvents) ?? snapshot.tokenUsage,
       recentEvents: snapshotRecentEvents(host.id, threadId),
@@ -279,7 +273,7 @@ export class ThreadOpenService {
       runtimeStatus: runtimeStatusFromThreadState(snapshot.thread, snapshot.history, recentEvents),
       projectId: resolvedProjectId,
       project: resolvedProjectId === null ? null : projectStore.get(resolvedProjectId),
-      turnsPage: snapshot.turnsPage,
+      oldestTimelineCursor: snapshot.oldestTimelineCursor,
       threadSettings: snapshot.threadSettings,
       tokenUsage: latestTokenUsageFromEvents(recentEvents) ?? snapshot.tokenUsage,
       recentEvents: snapshotRecentEvents(host.id, threadId),
@@ -290,26 +284,16 @@ export class ThreadOpenService {
     host: HostRecord,
     threadId: string,
     projectId: number | null,
-    limit: number,
     activationController?: ThreadController,
   ) {
     if (activationController !== undefined) {
-      const resumed = await activationController.resumeWithInitialTurnsPage(limit);
-      const initialTurnsPage = resumed.initialTurnsPage;
-      if (initialTurnsPage === null || initialTurnsPage === undefined) {
-        throw new Error("thread/resume omitted the requested initialTurnsPage");
-      }
-      const loadedTurnsPage = await this.historyReader.loadInitialTurnsPage(
-        host,
-        resumed.thread,
-        limit,
-        initialTurnsPage,
-      );
+      const resumed = await activationController.resumeForHistory();
+      const timelinePage = await this.historyReader.loadInitialTimelinePage(host, resumed.thread);
       return this.storeRemoteOpenSnapshot(
         host,
         projectId,
         resumed.thread,
-        loadedTurnsPage,
+        timelinePage,
         extractThreadSettings(resumed),
         activationController,
       );
@@ -325,16 +309,12 @@ export class ThreadOpenService {
       120_000,
       parseThreadReadResult,
     );
-    const initialTurnsPage = await this.historyReader.loadInitialTurnsPage(
-      host,
-      read.thread,
-      limit,
-    );
+    const timelinePage = await this.historyReader.loadInitialTimelinePage(host, read.thread);
     return this.storeRemoteOpenSnapshot(
       host,
       projectId,
       read.thread,
-      initialTurnsPage,
+      timelinePage,
       extractThreadSettings(read.thread),
     );
   }
@@ -343,35 +323,31 @@ export class ThreadOpenService {
     host: HostRecord,
     projectId: number | null,
     thread: AppServerThread,
-    initialTurnsPage: TurnsPage,
+    timelinePage: AppServerTimelinePage,
     threadSettings: ReturnType<typeof extractThreadSettings> | null,
     activationController?: ThreadController,
   ) {
     const threadId = thread.id;
     const resolvedProjectId = resolveProjectId(host.id, projectId, thread.cwd);
     threadMetadataStore.record(host.id, resolvedProjectId, thread);
-    const previousSnapshot = threadSnapshotStore.get(host.id, threadId);
-
     // The per-thread store retains at most 500 events. Reapply the complete retained window so a
     // summary refresh cannot erase an accepted steer merely because it is older than the first
     // 200 high-frequency output deltas.
     const recentEvents = gatewayEventStore.list(host.id, threadId, 0, 500);
     const baseSnapshot = {
       thread,
-      history: projectThreadTimelineHistory(pageToFullHistory(thread, initialTurnsPage)),
+      history: projectThreadTimelineHistory({
+        thread: { id: thread.id, turns: timelinePageToTurns(timelinePage) },
+      }),
+      oldestTimelineCursor: timelinePage.nextCursor,
       projectId: resolvedProjectId,
-      turnsPage: pageCursorState(initialTurnsPage),
       // For browser activation this value comes directly from thread/resume, including its
       // top-level collaborationMode. Do not replace it with a historical settings event: the
       // response is the protocol's persisted thread configuration.
       threadSettings,
       tokenUsage: latestTokenUsageFromEvents(recentEvents),
     };
-    const snapshot = preserveUserMessagesInOpenSnapshot(
-      baseSnapshot,
-      previousSnapshot,
-      recentEvents,
-    );
+    const snapshot = applyMaterializedEventsToOpenSnapshot(baseSnapshot, recentEvents);
     // During browser activation the controller is created before the cold snapshot exists. Route
     // the write through it so sub-agent classification and active-main-thread handoff state are
     // initialized together with the cache. Non-browser reconciliation has no activation controller
@@ -391,7 +367,7 @@ function snapshotSatisfiesTurnLimit(snapshot: ThreadOpenSnapshot, limit: number)
   // INITIAL_TURN_PAGE_LIMIT, while same-page Pinia views ask for the depth they already retained.
   return (
     threadTurnsFromHistory(snapshot.history).length >= limit ||
-    snapshot.turnsPage.nextCursor === null
+    snapshot.oldestTimelineCursor === null
   );
 }
 

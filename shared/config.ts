@@ -4,7 +4,8 @@ import type { GatewayConfig, GatewayNotificationSettings } from "./types";
 // explicit history navigation; do not silently prepend a background page after the Agent viewport
 // mounts. A same-page cached view may retain a wider depth that the user already loaded.
 export const INITIAL_TURN_PAGE_LIMIT = 2;
-export const OLDER_TURN_PAGE_LIMIT = 5;
+export const TIMELINE_PAGE_LIMIT = 100;
+export const CLIENT_THREAD_TIMELINE_ENTRY_LIMIT = 1000;
 export const SERVER_TURN_CACHE_LIMIT = 50;
 export const SERVER_THREAD_CACHE_LIMIT = 100;
 // Match the bounded workspace deck used by mature multi-agent clients: inactive conversations are

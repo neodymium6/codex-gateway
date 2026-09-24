@@ -1,9 +1,9 @@
 import type { Locator, Page } from "@playwright/test";
 import {
-  installRealtimeThreadTurnsLoadRoute,
-  realtimeThreadTurnsLoadRequests,
-  releaseRealtimeThreadTurnsLoadRoute,
-  type ThreadTurnsLoadResponseInput,
+  installRealtimeThreadTimelineLoadRoute,
+  realtimeThreadTimelineLoadRequests,
+  releaseRealtimeThreadTimelineLoadRoute,
+  type ThreadTimelineLoadResponseInput,
 } from "./realtime-route";
 
 interface FrameTracker {
@@ -55,19 +55,19 @@ export async function threadTurnCount(page: Page) {
   });
 }
 
-export async function installDeferredThreadTurnsLoadStub(
+export async function installDeferredThreadTimelineLoadStub(
   page: Page,
-  response: ThreadTurnsLoadResponseInput,
+  response: ThreadTimelineLoadResponseInput,
 ) {
-  installRealtimeThreadTurnsLoadRoute(page, response, true);
+  installRealtimeThreadTimelineLoadRoute(page, response, true);
 }
 
-export async function releaseDeferredThreadTurnsLoad(page: Page) {
-  releaseRealtimeThreadTurnsLoadRoute(page);
+export async function releaseDeferredThreadTimelineLoad(page: Page) {
+  releaseRealtimeThreadTimelineLoadRoute(page);
 }
 
-export async function threadTurnsLoadRequests(page: Page) {
-  return realtimeThreadTurnsLoadRequests(page);
+export async function threadTimelineLoadRequests(page: Page) {
+  return realtimeThreadTimelineLoadRequests(page);
 }
 
 export async function requestOlderTurnsFromStore(page: Page) {

@@ -3,6 +3,7 @@ import { gatewayEventStore } from "../state/gateway-events";
 import { subAgentThreadStore } from "../state/sub-agent-threads";
 import { threadMetadataStore } from "../state/thread-metadata";
 import { threadSnapshotStore } from "../state/thread-snapshots";
+import { threadTimelinePageStore } from "../state/thread-timeline-pages";
 import { terminalManager } from "../terminal/terminal-manager";
 import { tmuxMonitorService } from "../tmux-monitor/monitor-service";
 import type { StoredHostRecord } from "../state/memory";
@@ -50,6 +51,7 @@ function clearThreadRuntime(userId: number, hostId: number) {
   threadRuntimeStatusHub.deleteHost(userId, hostId);
   threadMetadataStore.deleteForHost(hostId);
   threadSnapshotStore.deleteForHost(hostId);
+  threadTimelinePageStore.deleteForHost(hostId);
   subAgentThreadStore.deleteForHost(hostId);
   gatewayEventStore.deleteForHost(hostId);
 }

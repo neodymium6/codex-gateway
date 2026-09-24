@@ -1,5 +1,5 @@
 import type { GatewayEvent, ProjectRecord } from "./records";
-import type { ThreadHistoryItem, ThreadTimelineHistoryState } from "../thread-history/types";
+import type { ThreadTimelineHistoryState } from "../thread-history/types";
 import type { AgentProviderId } from "../agent/providers";
 import type { AppServerThread } from "../runtime/app-server";
 
@@ -10,6 +10,8 @@ export type {
   AppServerThreadSection,
   AppServerThreadStatus,
   AppServerTurn,
+  AppServerTimelineEntry,
+  AppServerTimelinePage,
   CodexErrorInfo,
   MisalignmentErrorDetails,
 } from "../runtime/app-server";
@@ -66,26 +68,9 @@ export interface ThreadOpenResult {
   tokenUsage?: ThreadTokenUsageState | null;
   projectId?: number | null;
   project?: ProjectRecord | null;
-  turnsPage: {
-    nextCursor: string | null;
-    backwardsCursor: string | null;
-  };
+  /** Cursor for the oldest currently cached timeline page; null means no older page exists. */
+  oldestTimelineCursor: string | null;
   recentEvents: GatewayEvent[];
-}
-
-export interface ThreadTurnsPageResult {
-  history: ThreadTimelineHistoryState;
-  turnsPage: {
-    nextCursor: string | null;
-    backwardsCursor: string | null;
-  };
-}
-
-export interface ThreadItemsPageResult {
-  turnId: string;
-  items: ThreadHistoryItem[];
-  nextCursor: string | null;
-  backwardsCursor: string | null;
 }
 
 /** Persisted by the official app-server thread attachment store. */

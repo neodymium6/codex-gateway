@@ -4,10 +4,8 @@ import type {
   ThreadGoal,
   ThreadGoalStatus,
   ThreadAttachment,
-  ThreadItemsPageResult,
   ThreadOpenResult,
   ThreadRuntimeStatusUpdate,
-  ThreadTurnsPageResult,
 } from "./thread";
 import type { ApprovalPolicy, ReasoningEffort } from "./thread";
 import type { TerminalOpenTarget, TerminalSessionSnapshot } from "./terminal";
@@ -97,23 +95,12 @@ export type RealtimeClientMessage =
       threadId: string;
     }
   | {
-      type: "thread.turns.load";
+      type: "thread.timeline.load";
       requestId: string;
       hostId: number;
       threadId: string;
       cursor?: string | null;
       limit?: number;
-      sortDirection?: "asc" | "desc";
-    }
-  | {
-      type: "thread.items.load";
-      requestId: string;
-      hostId: number;
-      threadId: string;
-      turnId: string;
-      cursor?: string | null;
-      limit?: number;
-      sortDirection?: "asc" | "desc";
     }
   | {
       type: "thread.attachments.list";
@@ -435,18 +422,15 @@ export type RealtimeServerMessage =
       lastEventId: number;
       eventEpoch: string;
     } & ThreadOpenResult)
-  | ({
-      type: "thread.turns.page";
+  | {
+      type: "thread.timeline.page";
       requestId: string;
       hostId: number;
       threadId: string;
-    } & ThreadTurnsPageResult)
-  | ({
-      type: "thread.items.page";
-      requestId: string;
-      hostId: number;
-      threadId: string;
-    } & ThreadItemsPageResult)
+      data: import("../runtime/app-server").AppServerTimelinePage["data"];
+      nextCursor: string | null;
+      activeRealtimeSessionAtPageStart: string | null;
+    }
   | {
       type: "thread.attachments.page";
       requestId: string;

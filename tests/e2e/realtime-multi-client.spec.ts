@@ -287,7 +287,7 @@ test("fans out a real remote app-server thread to multiple browser clients acros
     await openThreadFromProjectOrRestoredState(page, host.id, project.id, threadId);
     // Do not open the intermediate disclosure here. The receiving browser deliberately switched
     // away while the steer arrived, so returning to the cached thread must render that user row
-    // from realtime history instead of discovering it later through thread/items/list.
+    // from realtime history instead of discovering it later through item pagination.
     await expect(
       page
         .getByTestId("chat-scroll-area")

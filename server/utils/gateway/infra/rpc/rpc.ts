@@ -112,6 +112,15 @@ export class CodexRpcClient extends EventEmitter<CodexRpcClientEvents> {
     );
     this.assertCurrentConnection(generation);
     this.notify("initialized", {});
+    // Codex owns legacy-rollout conversion. Enabling the official background migration after
+    // initialization lets the daemon atomically project old JSONL into its paginated store, while
+    // its own journal and busy retry policy handle active desktop writers. Gateway must not parse
+    // or rewrite rollout files itself, because that would create a second history implementation.
+    await this.request(
+      "experimentalFeature/enablement/set",
+      { enablement: { background_paginated_rollout_migration: true } },
+      30_000,
+    );
     this.initialized = true;
     hostLifecycleBus.emit({
       hostId: this.host.id,

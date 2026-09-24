@@ -160,7 +160,6 @@ function canCompare(document: FilePreviewDocument) {
     document.projectId !== null &&
     document.previewKind === "text" &&
     document.objectUrl !== "" &&
-    !document.stale &&
     (document.size ?? 0) <= MAX_EDITABLE_FILE_BYTES
   );
 }

@@ -80,7 +80,10 @@ function applyThreadHistoryUpdates(hostId: number, threadId: string, updates: Hi
   const views = useGatewayThreadViewStore();
   if (navigation.selectedHostId === hostId && navigation.selectedThreadId === threadId) {
     setSelectedThreadHistory(
-      updates.reduce((history, update) => update(history, views.currentThread), views.history),
+      updates.reduce<ThreadHistoryState | null>(
+        (history, update) => update(history, views.currentThread),
+        views.history,
+      ),
     );
     views.cacheSelectedThreadView();
     return;
@@ -88,7 +91,7 @@ function applyThreadHistoryUpdates(hostId: number, threadId: string, updates: Hi
   const view = views.threadViews[pinnedKey(hostId, threadId)];
   if (view) {
     patchThreadView(hostId, threadId, {
-      history: updates.reduce(
+      history: updates.reduce<ThreadHistoryState | null>(
         (history, update) => update(history, view.currentThread),
         view.history,
       ),

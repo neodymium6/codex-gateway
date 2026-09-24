@@ -131,13 +131,10 @@ export function expectMcpEventStreamAccepted(message: RealtimeResponseMessage) {
   return message;
 }
 
-export function expectThreadTurnsPage(message: RealtimeResponseMessage) {
-  if (message.type !== "thread.turns.page") unexpectedResponse("thread.turns.page", message.type);
-  return message;
-}
-
-export function expectThreadItemsPage(message: RealtimeResponseMessage) {
-  if (message.type !== "thread.items.page") unexpectedResponse("thread.items.page", message.type);
+export function expectThreadTimelinePage(message: RealtimeResponseMessage) {
+  if (message.type !== "thread.timeline.page") {
+    unexpectedResponse("thread.timeline.page", message.type);
+  }
   return message;
 }
 

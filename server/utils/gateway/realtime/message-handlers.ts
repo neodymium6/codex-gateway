@@ -8,7 +8,7 @@ import {
   unsubscribeThread,
 } from "./handlers/thread-events";
 import { clearThreadGoal, getThreadGoal, setThreadGoal } from "./handlers/thread-goals";
-import { loadThreadItems, loadThreadTurns } from "./handlers/thread-turn-pages";
+import { loadThreadTimelinePage } from "./handlers/thread-timeline";
 import {
   closeTerminal,
   listTerminals,
@@ -70,8 +70,7 @@ export const realtimeMessageDispatcher = new RealtimeMessageDispatcher({
   "thread.start": startThread,
   "thread.subscribe": subscribeThread,
   "thread.unsubscribe": unsubscribeThread,
-  "thread.turns.load": loadThreadTurns,
-  "thread.items.load": loadThreadItems,
+  "thread.timeline.load": loadThreadTimelinePage,
   "thread.attachments.list": listThreadAttachments,
   "thread.attachment.add": addThreadAttachment,
   "thread.attachment.remove": removeThreadAttachment,

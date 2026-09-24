@@ -1,4 +1,4 @@
-import type { GatewayEvent, ThreadHistoryState } from "~~/shared/types";
+import type { GatewayEvent, ThreadHistoryState, ThreadTimelineHistoryState } from "~~/shared/types";
 import { CLIENT_THREAD_CACHE_LIMIT } from "~~/shared/config";
 import { projectThreadTimelineHistory } from "~~/shared/thread-history/timeline";
 import { retainRecentThreadTurns } from "~~/shared/thread-history/retention";
@@ -55,18 +55,19 @@ function pruneThreadViews(threadViews: Record<string, ThreadViewState>) {
   return Object.fromEntries(entries);
 }
 
-export function patchThreadView(hostId: number, threadId: string, patch: Partial<ThreadViewState>) {
+type ThreadViewPatch = Omit<Partial<ThreadViewState>, "history"> & {
+  history?: ThreadHistoryState | null;
+};
+
+export function patchThreadView(hostId: number, threadId: string, patch: ThreadViewPatch) {
   const navigation = useGatewayNavigationStore();
   const views = useGatewayThreadViewStore();
   const key = threadViewKey(hostId, threadId);
   const existing = views.threadViews[key] ?? emptyThreadView(hostId, threadId);
-  // history and timelineTurns are one cache invariant. Realtime events also update background
-  // threads, so accepting a history-only patch without rebuilding its projection would make the
-  // next route switch restore stale rows. Patches unrelated to history preserve both references.
+  // History is already projected at the reducer boundary. Route switches restore this same object
+  // instead of maintaining a second timeline-turns array that can drift from it.
   const projectedPatch =
-    "history" in patch
-      ? projectionFields(patch.history ?? null)
-      : { history: existing.history, timelineTurns: existing.timelineTurns };
+    "history" in patch ? projectionFields(patch.history ?? null) : { history: existing.history };
   const next = { ...existing, ...patch, ...projectedPatch, hostId, threadId };
   upsertThreadView(next);
   if (navigation.selectedHostId === hostId && navigation.selectedThreadId === threadId) {
@@ -91,10 +92,8 @@ export function activateThreadViewFromCache(hostId: number, threadId: string) {
   navigation.selectedThreadId = view.threadId;
   views.currentThread = view.currentThread;
   views.history = view.history;
-  views.timelineTurns = view.timelineTurns;
   views.events = [...view.events];
-  views.olderTurnsCursor = view.olderTurnsCursor;
-  views.newerTurnsCursor = view.newerTurnsCursor;
+  views.oldestTimelineCursor = view.oldestTimelineCursor;
   views.lastEventId = view.lastEventId;
   views.appliedEventId = view.appliedEventId ?? view.lastEventId;
   views.eventEpoch = view.eventEpoch;
@@ -118,10 +117,8 @@ export function saveSelectedThreadView() {
     threadId: navigation.selectedThreadId,
     currentThread: views.currentThread,
     history: views.history,
-    timelineTurns: views.timelineTurns,
     events: [...views.events],
-    olderTurnsCursor: views.olderTurnsCursor,
-    newerTurnsCursor: views.newerTurnsCursor,
+    oldestTimelineCursor: views.oldestTimelineCursor,
     lastEventId: views.lastEventId,
     appliedEventId: views.appliedEventId,
     eventEpoch: views.eventEpoch,
@@ -183,10 +180,8 @@ function emptyThreadView(hostId: number, threadId: string): ThreadViewState {
     threadId,
     currentThread: null,
     history: null,
-    timelineTurns: [],
     events: [],
-    olderTurnsCursor: null,
-    newerTurnsCursor: null,
+    oldestTimelineCursor: null,
     lastEventId: 0,
     appliedEventId: 0,
     eventEpoch: "",
@@ -195,8 +190,10 @@ function emptyThreadView(hostId: number, threadId: string): ThreadViewState {
   };
 }
 
-function projectionFields(history: ThreadHistoryState | null) {
-  if (history === null) return { history: null, timelineTurns: [] };
+function projectionFields(history: ThreadHistoryState | null): {
+  history: ThreadTimelineHistoryState | null;
+} {
+  if (history === null) return { history: null };
   const projected = projectThreadTimelineHistory(retainRecentThreadTurns(history)!);
-  return { history: projected, timelineTurns: projected.thread.turns };
+  return { history: projected };
 }

@@ -178,35 +178,51 @@ export type MisalignmentErrorDetails = NonNullable<
   NonNullable<AppServerTurn["error"]>["misalignment"]
 >;
 
-export const turnsPageSchema = z
+const threadTimelineEntrySchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("item"),
+      position: z.number(),
+      turnId: z.string().min(1),
+      item: threadItemSchema,
+    })
+    .strict(),
+  z.object({ type: z.literal("realtime"), position: z.number(), item: z.unknown() }).strict(),
+  z
+    .object({
+      type: z.literal("turnStarted"),
+      position: z.number(),
+      turnId: z.string().min(1),
+      startedAt: z.number().nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("turnCompleted"),
+      position: z.number(),
+      turnId: z.string().min(1),
+      status: z.string(),
+      error: z.unknown().nullable(),
+      startedAt: z.number().nullable(),
+      completedAt: z.number().nullable(),
+      durationMs: z.number().nullable(),
+    })
+    .strict(),
+]);
+
+export const threadTimelinePageSchema = z
   .object({
-    data: z.array(threadTurnSchema),
+    data: z.array(threadTimelineEntrySchema),
     nextCursor: z.string().nullable(),
-    backwardsCursor: z.string().nullable(),
+    activeRealtimeSessionAtPageStart: z.string().nullable(),
   })
-  .loose();
+  .strict();
 
-export function parseTurnsPage(value: unknown) {
-  return turnsPageSchema.parse(value);
-}
+export type AppServerTimelinePage = z.infer<typeof threadTimelinePageSchema>;
+export type AppServerTimelineEntry = AppServerTimelinePage["data"][number];
 
-export const threadItemsPageSchema = z
-  .object({
-    data: z.array(
-      z
-        .object({
-          turnId: z.string().min(1),
-          item: threadItemSchema,
-        })
-        .strict(),
-    ),
-    nextCursor: z.string().nullable(),
-    backwardsCursor: z.string().nullable(),
-  })
-  .loose();
-
-export function parseThreadItemsPage(value: unknown) {
-  return threadItemsPageSchema.parse(value);
+export function parseThreadTimelinePage(value: unknown) {
+  return threadTimelinePageSchema.parse(value);
 }
 
 export const appServerThreadStatusSchema = z.discriminatedUnion("type", [
@@ -264,7 +280,10 @@ export const appServerThreadSchema = z
       .nullable(),
     sectionEnteredAt: z.number().nullable(),
     projectId: z.string().nullable(),
-    historyMode: z.enum(["legacy", "paginated"]),
+    // Existing daemons can retain threads created before timeline pagination was enabled. The
+    // Gateway never uses their legacy page fields; it normalizes this metadata and always reads
+    // history through thread/timeline/list.
+    historyMode: z.enum(["legacy", "paginated"]).transform(() => "paginated" as const),
     modelProvider: z.string(),
     model: z.string().nullable(),
     reasoningEffort: z.string().nullable(),
@@ -512,8 +531,6 @@ const threadResumeResultSchema = z
         })
         .strict(),
     ]),
-    initialTurnsPage: turnsPageSchema.nullable().optional(),
-    turnsBackwardsCursor: z.string().nullable().optional(),
   })
   .loose();
 

@@ -12,7 +12,11 @@ class ProtocolTestTransport implements RpcTransport {
   async connect() {}
 
   send(message: RpcEnvelope) {
-    if (message.method === "initialize" && message.id !== undefined) {
+    if (
+      (message.method === "initialize" ||
+        message.method === "experimentalFeature/enablement/set") &&
+      message.id !== undefined
+    ) {
       queueMicrotask(() => this.options.onMessage(JSON.stringify({ id: message.id, result: {} })));
       return;
     }
